@@ -1,1 +1,1 @@
-# FIT3164_Assignment
+# Electronic Voting App

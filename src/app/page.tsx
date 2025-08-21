@@ -101,3 +101,8 @@ export default function Home() {
     </div>
   );
 }
+
+const Test = () => {
+  let unusedVar = "hello"; // Should trigger "unused variable"
+  return <div>Test</div>;
+};

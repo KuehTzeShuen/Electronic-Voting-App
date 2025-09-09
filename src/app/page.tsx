@@ -46,7 +46,7 @@ export default function LoginPage() {
         </div>
         <div>
           <label className="block text-white text-lg font-bold mb-2" style={{fontFamily: 'inherit'}}>
-            Student IDDDDDDDDDDDDDDDD
+            Student ID
           </label>
           <input
             type="text"

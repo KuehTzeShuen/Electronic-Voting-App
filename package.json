@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "cross-env TAILWIND_DISABLE_OXIDE=1 next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
@@ -20,11 +20,8 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "autoprefixer": "^10.4.21",
-    "cross-env": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
-    "postcss": "^8.5.6",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

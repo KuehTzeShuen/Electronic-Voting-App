@@ -1,5 +1,4 @@
 "use client";
-import { useParams } from "next/navigation";
 
 const colorPalette = [
   "bg-[#3B4A5A]",
@@ -48,7 +47,7 @@ export default function PollPage() {
     return shuffled.slice(0, n);
   }
   const optionsToShow = getRandomOptions(votingOptions, 4);
-  const params = useParams();
+  // const params = useParams();
   // const id = Number(params.id);
   const id = 0
   const poll = pollData[id];
@@ -75,7 +74,7 @@ export default function PollPage() {
       <div className="mt-8 w-full max-w-md bg-[#232229] rounded-2xl shadow p-6 flex flex-col items-center gap-4">
         <div className="text-white text-lg font-semibold mb-2">Choose your candidate:</div>
         <ul className="w-full flex flex-col gap-3">
-          {optionsToShow.map((option, idx) => (
+          {optionsToShow.map((option) => (
             <li key={option} className="w-full">
               <button className="w-full bg-[#1a1a1c] text-white rounded-xl py-3 px-4 font-medium hover:bg-[#11777B] transition-colors">
                 {option}

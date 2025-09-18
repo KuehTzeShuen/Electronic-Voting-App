@@ -7,12 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type Step = "email" | "otp" | "studentId";
+type Step = "login";
 
 export default function LoginPage() {
-  const [step, setStep] = useState<Step>("email");
+  const [step] = useState<Step>("login");
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
   const [studentId, setStudentId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,59 +28,23 @@ export default function LoginPage() {
     return "Unknown error";
   };
 
-  const sendOtp = async (e: React.FormEvent) => {
+  const login = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      const { error: signInError } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: undefined, // Remove redirect to force OTP
-        },
-      });
-      if (signInError) throw signInError;
-      setStep("otp");
-    } catch (err: unknown) {
-      setError(getErrorMessage(err) || "Failed to send code");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const verifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    try {
-      const { data, error: verifyError } = await supabase.auth.verifyOtp({
-        email,
-        token: otp,
-        type: "email",
-      });
-      if (verifyError) throw verifyError;
-      if (!data?.user) throw new Error("No user returned after verification");
-      setStep("studentId");
-    } catch (err: unknown) {
-      setError(getErrorMessage(err) || "Invalid code");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const saveStudentId = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: { studentId },
-      });
-      if (updateError) throw updateError;
+      // Check user exists by email + student_id
+      const { data, error: fetchError } = await supabase
+        .from("users")
+        .select("student_id")
+        .eq("email", email)
+        .eq("student_id", studentId)
+        .maybeSingle();
+      if (fetchError) throw fetchError;
+      if (!data) throw new Error("No account found for this email and student ID");
       router.push("/polling-menu");
     } catch (err: unknown) {
-      setError(getErrorMessage(err) || "Failed to save student ID");
+      setError(getErrorMessage(err) || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -114,9 +77,7 @@ export default function LoginPage() {
 
       <header className="w-full px-6 pt-8 pb-6 relative z-10">
         <h1 className="text-foreground text-xl font-semibold">
-          {step === "email" && "Welcome"}
-          {step === "otp" && "Check your email"}
-          {step === "studentId" && "One last step"}
+          Login
         </h1>
       </header>
 
@@ -126,64 +87,29 @@ export default function LoginPage() {
         )}
       </div>
 
-      {step === "email" && (
-        <Card className="w-full max-w-xs border-muted/40 bg-card/60 backdrop-blur relative z-10">
-          <CardHeader>
-            <CardTitle className="text-sm text-muted-foreground">Student Email</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={sendOtp} className="flex flex-col gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@university.edu" required />
-              </div>
-              <Button type="submit" disabled={loading} className="w-full">
-                {loading ? "Sending..." : "Send code"}
-              </Button>
-              <p className="text-xs text-muted-foreground">We&apos;ll email you a one-time code.</p>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {step === "otp" && (
-        <Card className="w-full max-w-xs border-muted/40 bg-card/60 backdrop-blur relative z-10">
-          <CardHeader>
-            <CardTitle className="text-sm text-muted-foreground">Enter code</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={verifyOtp} className="flex flex-col gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="otp">Code</Label>
-                <Input id="otp" inputMode="numeric" pattern="[0-9]*" value={otp} onChange={e => setOtp(e.target.value)} placeholder="6-digit code" required />
-              </div>
-              <Button type="submit" disabled={loading} className="w-full">
-                {loading ? "Verifying..." : "Verify"}
-              </Button>
-              <p className="text-xs text-muted-foreground">Sent to {email}</p>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {step === "studentId" && (
-        <Card className="w-full max-w-xs border-muted/40 bg-card/60 backdrop-blur relative z-10">
-          <CardHeader>
-            <CardTitle className="text-sm text-muted-foreground">Student details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={saveStudentId} className="flex flex-col gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="studentId">Student ID</Label>
-                <Input id="studentId" type="text" value={studentId} onChange={e => setStudentId(e.target.value)} placeholder="e.g. 12345678" required />
-              </div>
-              <Button type="submit" disabled={loading} className="w-full">
-                {loading ? "Saving..." : "Continue"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+      <Card className="w-full max-w-xs border-muted/40 bg-card/60 backdrop-blur relative z-10">
+        <CardHeader>
+          <CardTitle className="text-sm text-muted-foreground">Login</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={login} className="flex flex-col gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@university.edu" required />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="studentId">Student ID</Label>
+              <Input id="studentId" type="text" value={studentId} onChange={e => setStudentId(e.target.value)} placeholder="e.g. 12345678" required />
+            </div>
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? "Checking..." : "Login"}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Don&apos;t have an account? <a href="/signup" className="underline">Sign up</a>
+            </p>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

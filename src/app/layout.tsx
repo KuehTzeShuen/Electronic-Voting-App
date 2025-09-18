@@ -28,8 +28,8 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`dark ${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div className="flex justify-center w-full">
-          <div className="dark w-[430px] max-w-full min-h-screen">
+        <div className="min-h-screen w-full">
+          <div className="min-h-screen w-full">
             {children}
           </div>
         </div>

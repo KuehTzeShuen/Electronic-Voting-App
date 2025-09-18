@@ -158,7 +158,7 @@ export default function OngoingPollsPage() {
 
       <main className="w-full px-4 pt-6 pb-10 space-y-4 relative z-10">
         {polls.map((poll, idx) => (
-          <Card key={idx} className="border-muted/40 bg-card/60 backdrop-blur">
+          <Card key={idx} className="w-full max-w-2xl mx-auto border-muted/40 bg-card/60 backdrop-blur">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm text-muted-foreground">{poll.club}</CardTitle>
             </CardHeader>

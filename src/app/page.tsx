@@ -18,6 +18,17 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  const getErrorMessage = (error: unknown): string => {
+    if (error && typeof error === "object" && "message" in error) {
+      try {
+        return String((error as { message?: unknown }).message) || "Unknown error";
+      } catch {
+        return "Unknown error";
+      }
+    }
+    return "Unknown error";
+  };
+
   const sendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -32,8 +43,8 @@ export default function LoginPage() {
       });
       if (signInError) throw signInError;
       setStep("otp");
-    } catch (err: any) {
-      setError(err?.message || "Failed to send code");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || "Failed to send code");
     } finally {
       setLoading(false);
     }
@@ -52,8 +63,8 @@ export default function LoginPage() {
       if (verifyError) throw verifyError;
       if (!data?.user) throw new Error("No user returned after verification");
       setStep("studentId");
-    } catch (err: any) {
-      setError(err?.message || "Invalid code");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || "Invalid code");
     } finally {
       setLoading(false);
     }
@@ -69,8 +80,8 @@ export default function LoginPage() {
       });
       if (updateError) throw updateError;
       router.push("/polling-menu");
-    } catch (err: any) {
-      setError(err?.message || "Failed to save student ID");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || "Failed to save student ID");
     } finally {
       setLoading(false);
     }
@@ -129,7 +140,7 @@ export default function LoginPage() {
               <Button type="submit" disabled={loading} className="w-full">
                 {loading ? "Sending..." : "Send code"}
               </Button>
-              <p className="text-xs text-muted-foreground">We'll email you a one-time code.</p>
+              <p className="text-xs text-muted-foreground">We&apos;ll email you a one-time code.</p>
             </form>
           </CardContent>
         </Card>

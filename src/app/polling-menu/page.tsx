@@ -146,7 +146,7 @@ export default function OngoingPollsPage() {
       </div>
 
       <header className="w-full px-6 pt-8 pb-4 flex items-center justify-between relative z-10">
-        <h1 className="text-foreground text-xl font-semibold">Ongoing Polls</h1>
+        <h1 className="text-foreground text-2xl font-semibold">Ongoing Polls</h1>
       </header>
 
       <form onSubmit={handleAddPoll} className="w-full max-w-xs mx-auto px-6 flex flex-col gap-3 relative z-10">

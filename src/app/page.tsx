@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [step] = useState<Step>("login");
   const [email, setEmail] = useState("");
   const [studentId, setStudentId] = useState("");
+  const [role, setRole] = useState<"student" | "admin">("student");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -39,10 +40,17 @@ export default function LoginPage() {
         .select("student_id")
         .eq("email", email)
         .eq("student_id", studentId)
+        .eq("role", role)
         .maybeSingle();
       if (fetchError) throw fetchError;
       if (!data) throw new Error("No account found for this email and student ID");
-      router.push("/polling-menu");
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("appRole", role);
+          localStorage.setItem("appEmail", email);
+        }
+      } catch {}
+      router.push(role === "admin" ? "/polling-menu" : "/polling-menu");
     } catch (err: unknown) {
       setError(getErrorMessage(err) || "Login failed");
     } finally {
@@ -100,6 +108,19 @@ export default function LoginPage() {
             <div className="grid gap-2">
               <Label htmlFor="studentId">Student ID</Label>
               <Input id="studentId" type="text" value={studentId} onChange={e => setStudentId(e.target.value)} placeholder="e.g. 12345678" required />
+            </div>
+            <div className="grid gap-2">
+              <Label>Role</Label>
+              <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
+                <span className="text-sm text-muted-foreground">{role === "student" ? "Student" : "Admin"}</span>
+                <button
+                  type="button"
+                  onClick={() => setRole(prev => (prev === "student" ? "admin" : "student"))}
+                  className="rounded-md bg-secondary text-secondary-foreground px-3 py-1 text-xs"
+                >
+                  Toggle
+                </button>
+              </div>
             </div>
             <Button type="submit" disabled={loading} className="w-full">
               {loading ? "Checking..." : "Login"}

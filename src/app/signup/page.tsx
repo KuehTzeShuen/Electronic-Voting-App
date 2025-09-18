@@ -14,6 +14,7 @@ export default function SignupPage() {
   const [studentId, setStudentId] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [role, setRole] = useState<"student" | "admin">("student");
   const [step, setStep] = useState<"email" | "otp" | "details">("email");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +41,7 @@ export default function SignupPage() {
         .from("users")
         .select("student_id")
         .eq("email", email)
+        .eq("role", role)
         .limit(1)
         .maybeSingle();
       if (existingErr) throw existingErr;
@@ -91,7 +93,7 @@ export default function SignupPage() {
         first_name: firstName,
         last_name: lastName,
         email,
-        role: "student",
+        role,
         created_at: new Date().toISOString(),
       });
       if (insertError) throw insertError;
@@ -123,6 +125,19 @@ export default function SignupPage() {
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@university.edu" required />
+              </div>
+              <div className="grid gap-2">
+                <Label>Role</Label>
+                <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
+                  <span className="text-sm text-muted-foreground">{role === "student" ? "Student" : "Admin"}</span>
+                  <button
+                    type="button"
+                    onClick={() => setRole(prev => (prev === "student" ? "admin" : "student"))}
+                    className="rounded-md bg-secondary text-secondary-foreground px-3 py-1 text-xs"
+                  >
+                    Toggle
+                  </button>
+                </div>
               </div>
               <Button type="submit" disabled={loading} className="w-full">
                 {loading ? "Sending..." : "Send code"}

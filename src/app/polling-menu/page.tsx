@@ -1,5 +1,8 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 
 const colorPalette = [
@@ -12,8 +15,7 @@ const colorPalette = [
 ];
 
 export default function OngoingPollsPage() {
-  const [search, setSearch] = useState("");
-  const [polls] = useState([
+  const [polls, setPolls] = useState([
     {
       club: "Monash Cybersecurity Club",
       title: "2025 OGM MONSEC President Poll",
@@ -33,218 +35,151 @@ export default function OngoingPollsPage() {
       extra: "",
     },
   ]);
+  const [codes, setCodes] = useState<string[]>([]);
+  const [club, setClub] = useState("");
+  const [title, setTitle] = useState("");
+  const [extra, setExtra] = useState("");
 
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-  const [cardStyle, setCardStyle] = useState<React.CSSProperties>({});
-  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  // const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  // const [cardStyle, setCardStyle] = useState<React.CSSProperties>({});
   const router = useRouter();
 
   // Animation end handler
-  const handleAnimationEnd = () => {
-    if (selectedIdx !== null) {
-      router.push(`/poll/${selectedIdx}`);
-    }
-  };
+  // const handleAnimationEnd = () => {
+  //   if (selectedIdx !== null) {
+  //     router.push(`/poll/${selectedIdx}`);
+  //   }
+  // };
 
   // When Confirm is clicked
-  const handleSelect = (idx: number) => {
-    const card = cardRefs.current[idx];
-    if (card) {
-      const rect = card.getBoundingClientRect();
-      const scrollY = window.scrollY || window.pageYOffset;
-      const scrollX = window.scrollX || window.pageXOffset;
-      // Calculate the card's center
-      const cardCenterX = rect.left + rect.width / 2 + scrollX;
-      const cardCenterY = rect.top + rect.height / 2 + scrollY;
-      // Calculate the viewport center
-      const viewportCenterX = window.innerWidth / 2;
-      const viewportCenterY = window.innerHeight / 2;
-      // Calculate translation needed
-      const translateX = viewportCenterX - cardCenterX;
-      const translateY = viewportCenterY - cardCenterY;
-      setCardStyle({
-        position: "absolute",
-        left: rect.left + scrollX,
-        top: rect.top + scrollY,
-        width: rect.width,
-        height: rect.height,
-        zIndex: 50,
-        transition: "transform 0.7s cubic-bezier(0.4,0,0.2,1), opacity 0.7s",
-        transform: `translate(0px, 0px) scale(1)`,
-      });
-      setSelectedIdx(idx);
-      // Animate to center after a tick
-      setTimeout(() => {
-        // Calculate scale factors
-        const targetWidth = window.innerWidth * 0.9;
-        const targetHeight = window.innerHeight * 0.8;
-        const scaleX = targetWidth / rect.width;
-        const scaleY = targetHeight / rect.height;
-        setCardStyle((prev: React.CSSProperties) => ({
-          ...prev,
-          transform: `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`,
-          boxShadow: "0 10px 40px 0 rgba(0,0,0,0.3)",
-        }));
-      }, 10);
-    }
+  // const handleSelect = (idx: number) => {
+  //   const card = cardRefs.current[idx];
+  //   if (card) {
+  //     const rect = card.getBoundingClientRect();
+  //     const scrollY = window.scrollY || window.pageYOffset;
+  //     const scrollX = window.scrollX || window.pageXOffset;
+  //     // Calculate the card's center
+  //     const cardCenterX = rect.left + rect.width / 2 + scrollX;
+  //     const cardCenterY = rect.top + rect.height / 2 + scrollY;
+  //     // Calculate the viewport center
+  //     const viewportCenterX = window.innerWidth / 2;
+  //     const viewportCenterY = window.innerHeight / 2;
+  //     // Calculate translation needed
+  //     const translateX = viewportCenterX - cardCenterX;
+  //     const translateY = viewportCenterY - cardCenterY;
+  //     setCardStyle({
+  //       position: "absolute",
+  //       left: rect.left + scrollX,
+  //       top: rect.top + scrollY,
+  //       width: rect.width,
+  //       height: rect.height,
+  //       zIndex: 50,
+  //       transition: "transform 0.7s cubic-bezier(0.4,0,0.2,1), opacity 0.7s",
+  //       transform: `translate(0px, 0px) scale(1)`,
+  //     });
+  //     setSelectedIdx(idx);
+  //     // Animate to center after a tick
+  //     setTimeout(() => {
+  //       // Calculate scale factors
+  //       const targetWidth = window.innerWidth * 0.9;
+  //       const targetHeight = window.innerHeight * 0.8;
+  //       const scaleX = targetWidth / rect.width;
+  //       const scaleY = targetHeight / rect.height;
+  //       setCardStyle((prev: React.CSSProperties) => ({
+  //         ...prev,
+  //         transform: `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`,
+  //         boxShadow: "0 10px 40px 0 rgba(0,0,0,0.3)",
+  //       }));
+  //     }, 10);
+  //   }
+  // };
+
+  // Track code input for each poll card
+  const handleCodeChange = (idx: number, value: string) => {
+    setCodes(prev => {
+      const next = [...prev];
+      next[idx] = value;
+      return next;
+    });
+  };
+
+  // Join with code (basic client-side check then navigate)
+  const handleJoin = (idx: number) => {
+    const code = (codes[idx] || "").trim();
+    if (!code) return; // require a non-empty code
+    router.push(`/poll/${idx}`);
+  };
+
+  // Add new poll
+  const handleAddPoll = (e: React.FormEvent) => {
+    e.preventDefault();
+    const color = colorPalette[polls.length % colorPalette.length];
+    setPolls([...polls, { club, title, color, extra }]);
+    setClub("");
+    setTitle("");
+    setExtra("");
   };
 
   return (
-    <div
-      className={`min-h-screen bg-[#232229] flex flex-col items-center relative transition-colors duration-500 ${
-        selectedIdx !== null ? "bg-opacity-0" : "bg-opacity-100"
-      }`}
-    >
-      {/* Top circle */}
-      <div
-        className={`absolute top-0 left-0 w-full h-40 overflow-hidden transition-opacity duration-500 ${
-          selectedIdx !== null ? "opacity-0" : "opacity-100"
-        }`}
-      >
-        <svg
-          viewBox="0 0 375 120"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full"
-        >
-          <circle cx="0" cy="0" r="200" fill="#11777B" />
-        </svg>
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Background Shapes */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Large gradient circles */}
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl animate-float"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-secondary/20 to-transparent rounded-full blur-3xl animate-float-delayed"></div>
+        
+        {/* Medium shapes */}
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-gradient-to-br from-accent/10 to-transparent rounded-full blur-2xl animate-float"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-gradient-to-tl from-primary/15 to-transparent rounded-full blur-xl animate-float-delayed"></div>
+        
+        {/* Small accent shapes */}
+        <div className="absolute top-1/3 right-1/3 w-16 h-16 bg-gradient-to-br from-chart-1/20 to-transparent rounded-full blur-lg animate-float"></div>
+        <div className="absolute bottom-1/3 left-1/3 w-20 h-20 bg-gradient-to-tl from-chart-2/15 to-transparent rounded-full blur-lg animate-float-delayed"></div>
+        
+        {/* Additional decorative elements */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-primary/30 rounded-full animate-pulse"></div>
+        <div className="absolute top-1/6 right-1/6 w-1 h-1 bg-chart-3/40 rounded-full animate-pulse" style={{animationDelay: '1s'}}></div>
+        <div className="absolute bottom-1/6 left-1/6 w-1.5 h-1.5 bg-chart-4/30 rounded-full animate-pulse" style={{animationDelay: '2s'}}></div>
+        
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
       </div>
-      {/* Header */}
-      <div
-        className={`relative z-10 w-full flex flex-row items-center justify-between px-8 pt-8 transition-opacity duration-500 ${
-          selectedIdx !== null ? "opacity-0" : "opacity-100"
-        }`}
-      >
-        <h1
-          className="text-white text-4xl font-bold"
-          style={{ fontFamily: "inherit" }}
-        >
-          Ongoing Polls
-        </h1>
-        {/* Hamburger menu icon */}
-        <div className="w-8 h-8 flex flex-col justify-center items-center">
-          <span className="block w-6 h-1 bg-white rounded mb-1"></span>
-          <span className="block w-6 h-1 bg-white rounded mb-1"></span>
-          <span className="block w-6 h-1 bg-white rounded"></span>
-        </div>
-      </div>
-      <div className="relative z-10 w-full flex flex-row items-center justify-center px-8 pt-8 transition-opacity duration-500">
-        <input
-          type="text"
-          placeholder="Search"
-          className="rounded-full px-4 py-2 bg-[#989898] text-black text-sm font-semibold outline-none"
-          style={{ minWidth: 250 }}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-      </div>
-      {/* Poll cards */}
-      <div className="relative z-10 w-full flex flex-col gap-6 px-8 pt-8 items-center">
-        {polls
-          .filter(
-            poll =>
-              poll.club.toLowerCase().includes(search.toLowerCase()) ||
-              poll.title.toLowerCase().includes(search.toLowerCase()) ||
-              (poll.extra && poll.extra.toLowerCase().includes(search.toLowerCase()))
-          )
-          .map((poll, idx) => {
-          const isSelected = selectedIdx === idx;
-          const isFading = selectedIdx !== null && !isSelected;
 
-          // Render the absolutely positioned animating card only when selected
-          if (isSelected && Object.keys(cardStyle).length > 0) {
-            // Animate card, but keep text size fixed and centered, fade out input/button
-            return (
-              <div
-                key={"animating-" + idx}
-                style={cardStyle}
-                className={`
-                  rounded-3xl ${poll.color} p-5 flex flex-col gap-3 items-center
-                  transition-all duration-700
-                  z-50
-                `}
-                onTransitionEnd={handleAnimationEnd}
-              >
-                <div className="flex flex-col items-center w-full justify-center h-full">
-                  <div className="text-white text-xs font-semibold">
-                    {poll.club}
-                  </div>
-                  <div className="text-white text-xl font-bold leading-tight">
-                    {poll.title}
-                  </div>
-                  {poll.extra && (
-                    <div className="text-white text-xs">{poll.extra}</div>
-                  )}
-                </div>
-                <div
-                  className="flex flex-row gap-2 mt-2 w-full justify-center transition-opacity duration-700"
-                  style={{ opacity: 0 }}
-                >
-                  <input
-                    type="text"
-                    placeholder="Enter code:"
-                    className="rounded-full px-4 py-2 bg-[#232229] text-white text-sm font-semibold outline-none mr-2"
-                    style={{ minWidth: 100 }}
-                    disabled
-                  />
-                  <button
-                    type="button"
-                    className="rounded-full px-4 py-2 bg-[#232229] text-white text-sm font-semibold outline-none mr-2"
-                    style={{ minWidth: 100 }}
-                    disabled
-                  >
-                    Confirm
-                  </button>
-                </div>
-              </div>
-            );
-          }
+      <header className="w-full px-6 pt-8 pb-4 flex items-center justify-between relative z-10">
+        <h1 className="text-foreground text-2xl font-semibold">Ongoing Polls</h1>
+      </header>
 
-          // Render the normal cards (fade out if not selected)
-          return (
-            <div
-              key={idx}
-              ref={el => { cardRefs.current[idx] = el; }}
-              className={`
-          rounded-3xl ${poll.color} p-6 flex flex-col gap-4 relative max-w-xl w-full
-          transition-all duration-700
-          ${isFading ? "opacity-0 pointer-events-none" : "opacity-100"}
-          ${isSelected && selectedIdx !== null ? "opacity-0" : ""}
-        `}
-              style={{ minHeight: 150, marginLeft: 'auto', marginRight: 'auto' }}
-            >
-              <div className="text-white text-xs font-semibold">
-                {poll.club}
-              </div>
-              <div className="text-white text-xl font-bold leading-tight">
-                {poll.title}
-              </div>
-              {poll.extra && (
-                <div className="text-white text-xs">{poll.extra}</div>
-              )}
-              <div className="flex flex-row gap-2 mt-2">
-                <input
+      <form onSubmit={handleAddPoll} className="w-full max-w-xs mx-auto px-6 flex flex-col gap-3 relative z-10">
+        <Input type="text" placeholder="Club name" value={club} onChange={e => setClub(e.target.value)} required />
+        <Input type="text" placeholder="Poll title" value={title} onChange={e => setTitle(e.target.value)} required />
+        <Input type="text" placeholder="Extra info (optional)" value={extra} onChange={e => setExtra(e.target.value)} />
+        <Button type="submit" className="mt-1">Add poll</Button>
+      </form>
+
+      <main className="w-full px-4 pt-6 pb-10 space-y-4 relative z-10">
+        {polls.map((poll, idx) => (
+          <Card key={idx} className="border-muted/40 bg-card/60 backdrop-blur">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">{poll.club}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-foreground text-lg font-semibold">{poll.title}</div>
+              {poll.extra && <div className="text-muted-foreground text-xs mt-1">{poll.extra}</div>}
+              <div className="flex items-center gap-2 mt-3">
+                <Input
                   type="text"
-                  placeholder="Enter code:"
-                  className="rounded-full px-4 py-2 bg-[#232229] text-white text-sm font-semibold outline-none mr-2"
-                  style={{ minWidth: 100 }}
-                  disabled={selectedIdx !== null}
+                  placeholder="Enter code"
+                  value={codes[idx] || ""}
+                  onChange={e => handleCodeChange(idx, e.target.value)}
                 />
-                <button
-                  type="button"
-                  className="rounded-full px-4 py-2 bg-[#232229] text-white text-sm font-semibold outline-none mr-2"
-                  style={{ minWidth: 100 }}
-                  onClick={() => handleSelect(idx)}
-                  disabled={selectedIdx !== null}
-                >
-                  Confirm
-                </button>
+                <Button size="sm" onClick={() => handleJoin(idx)} disabled={(codes[idx] || "").trim() === ""}>
+                  Join
+                </Button>
               </div>
-            </div>
-          );
-        })}
-              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </main>
     </div>
   );
 }

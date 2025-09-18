@@ -22,9 +22,8 @@
     "react-dom": "19.1.0",
     "react-hook-form": "^7.62.0",
     "tailwind-merge": "^3.3.1",
-    "tailwindcss-animate": "^1.0.7",
-    "zod": "^4.1.9",
-    "tailwindcss": "^3.4.14"
+    "tailwindcss": "^3.4.14",
+    "zod": "^4.1.9"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -35,6 +34,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
     "postcss": "^8.5.6",
+    "tailwindcss-animate": "^1.0.7",
     "typescript": "^5"
   }
 }

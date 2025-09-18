@@ -16,7 +16,7 @@ const colorPalette = [
 
 export default function OngoingPollsPage() {
   const [search, setSearch] = useState("");
-  const [polls] = useState([
+  const [polls, setPolls] = useState([
     {
       club: "Monash Cybersecurity Club",
       title: "2025 OGM MONSEC President Poll",
@@ -36,6 +36,10 @@ export default function OngoingPollsPage() {
       extra: "",
     },
   ]);
+  const [codes, setCodes] = useState<string[]>([]);
+  const [club, setClub] = useState("");
+  const [title, setTitle] = useState("");
+  const [extra, setExtra] = useState("");
 
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [cardStyle, setCardStyle] = useState<React.CSSProperties>({});
@@ -92,6 +96,32 @@ export default function OngoingPollsPage() {
     }
   };
 
+  // Track code input for each poll card
+  const handleCodeChange = (idx: number, value: string) => {
+    setCodes(prev => {
+      const next = [...prev];
+      next[idx] = value;
+      return next;
+    });
+  };
+
+  // Join with code (basic client-side check then navigate)
+  const handleJoin = (idx: number) => {
+    const code = (codes[idx] || "").trim();
+    if (!code) return; // require a non-empty code
+    router.push(`/poll/${idx}`);
+  };
+
+  // Add new poll
+  const handleAddPoll = (e: React.FormEvent) => {
+    e.preventDefault();
+    const color = colorPalette[polls.length % colorPalette.length];
+    setPolls([...polls, { club, title, color, extra }]);
+    setClub("");
+    setTitle("");
+    setExtra("");
+  };
+
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Background Shapes */}
@@ -138,8 +168,15 @@ export default function OngoingPollsPage() {
               <div className="text-foreground text-lg font-semibold">{poll.title}</div>
               {poll.extra && <div className="text-muted-foreground text-xs mt-1">{poll.extra}</div>}
               <div className="flex items-center gap-2 mt-3">
-                <Input type="text" placeholder="Enter code" />
-                <Button size="sm">Join</Button>
+                <Input
+                  type="text"
+                  placeholder="Enter code"
+                  value={codes[idx] || ""}
+                  onChange={e => handleCodeChange(idx, e.target.value)}
+                />
+                <Button size="sm" onClick={() => handleJoin(idx)} disabled={(codes[idx] || "").trim() === ""}>
+                  Join
+                </Button>
               </div>
             </CardContent>
           </Card>

@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
 
 const colorPalette = [
   "bg-[#3B4A5A]",
@@ -14,7 +15,8 @@ const colorPalette = [
 ];
 
 export default function OngoingPollsPage() {
-  const [polls, setPolls] = useState([
+  const [search, setSearch] = useState("");
+  const [polls] = useState([
     {
       club: "Monash Cybersecurity Club",
       title: "2025 OGM MONSEC President Poll",
@@ -35,20 +37,59 @@ export default function OngoingPollsPage() {
     },
   ]);
 
-  const [club, setClub] = useState("");
-  const [title, setTitle] = useState("");
-  const [extra, setExtra] = useState("");
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [cardStyle, setCardStyle] = useState<React.CSSProperties>({});
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const router = useRouter();
 
-  const handleAddPoll = (e: React.FormEvent) => {
-    e.preventDefault();
-    const color = colorPalette[polls.length % colorPalette.length];
-    setPolls([
-      ...polls,
-      { club, title, color, extra },
-    ]);
-    setClub("");
-    setTitle("");
-    setExtra("");
+  // Animation end handler
+  const handleAnimationEnd = () => {
+    if (selectedIdx !== null) {
+      router.push(`/poll/${selectedIdx}`);
+    }
+  };
+
+  // When Confirm is clicked
+  const handleSelect = (idx: number) => {
+    const card = cardRefs.current[idx];
+    if (card) {
+      const rect = card.getBoundingClientRect();
+      const scrollY = window.scrollY || window.pageYOffset;
+      const scrollX = window.scrollX || window.pageXOffset;
+      // Calculate the card's center
+      const cardCenterX = rect.left + rect.width / 2 + scrollX;
+      const cardCenterY = rect.top + rect.height / 2 + scrollY;
+      // Calculate the viewport center
+      const viewportCenterX = window.innerWidth / 2;
+      const viewportCenterY = window.innerHeight / 2;
+      // Calculate translation needed
+      const translateX = viewportCenterX - cardCenterX;
+      const translateY = viewportCenterY - cardCenterY;
+      setCardStyle({
+        position: "absolute",
+        left: rect.left + scrollX,
+        top: rect.top + scrollY,
+        width: rect.width,
+        height: rect.height,
+        zIndex: 50,
+        transition: "transform 0.7s cubic-bezier(0.4,0,0.2,1), opacity 0.7s",
+        transform: `translate(0px, 0px) scale(1)`,
+      });
+      setSelectedIdx(idx);
+      // Animate to center after a tick
+      setTimeout(() => {
+        // Calculate scale factors
+        const targetWidth = window.innerWidth * 0.9;
+        const targetHeight = window.innerHeight * 0.8;
+        const scaleX = targetWidth / rect.width;
+        const scaleY = targetHeight / rect.height;
+        setCardStyle((prev: React.CSSProperties) => ({
+          ...prev,
+          transform: `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`,
+          boxShadow: "0 10px 40px 0 rgba(0,0,0,0.3)",
+        }));
+      }, 10);
+    }
   };
 
   return (

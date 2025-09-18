@@ -20,6 +20,26 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Environment variables
+
+Create a `.env.local` file with your Supabase public details:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+Restart the dev server after adding env vars.
+
+## Auth flow
+
+The login page at `/` implements:
+- Email → sends OTP via `supabase.auth.signInWithOtp`
+- One-time code → verifies via `supabase.auth.verifyOtp`
+- Student ID → saved to `user_metadata.studentId` via `supabase.auth.updateUser`
+
+After success, users are redirected to `/polling-menu`.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

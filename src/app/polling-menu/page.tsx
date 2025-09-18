@@ -1,5 +1,8 @@
 "use client";
 import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const colorPalette = [
   "bg-[#3B4A5A]",
@@ -49,82 +52,58 @@ export default function OngoingPollsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#232229] flex flex-col items-center relative">
-      {/* Top circle */}
-      <div className="absolute top-0 left-0 w-full h-40 overflow-hidden">
-        <svg viewBox="0 0 375 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-          <circle cx="0" cy="0" r="200" fill="#11777B" />
-        </svg>
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Background Shapes */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Large gradient circles */}
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl animate-float"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-secondary/20 to-transparent rounded-full blur-3xl animate-float-delayed"></div>
+        
+        {/* Medium shapes */}
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-gradient-to-br from-accent/10 to-transparent rounded-full blur-2xl animate-float"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-gradient-to-tl from-primary/15 to-transparent rounded-full blur-xl animate-float-delayed"></div>
+        
+        {/* Small accent shapes */}
+        <div className="absolute top-1/3 right-1/3 w-16 h-16 bg-gradient-to-br from-chart-1/20 to-transparent rounded-full blur-lg animate-float"></div>
+        <div className="absolute bottom-1/3 left-1/3 w-20 h-20 bg-gradient-to-tl from-chart-2/15 to-transparent rounded-full blur-lg animate-float-delayed"></div>
+        
+        {/* Additional decorative elements */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-primary/30 rounded-full animate-pulse"></div>
+        <div className="absolute top-1/6 right-1/6 w-1 h-1 bg-chart-3/40 rounded-full animate-pulse" style={{animationDelay: '1s'}}></div>
+        <div className="absolute bottom-1/6 left-1/6 w-1.5 h-1.5 bg-chart-4/30 rounded-full animate-pulse" style={{animationDelay: '2s'}}></div>
+        
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
       </div>
-      {/* Header */}
-      <div className="relative z-10 w-full flex flex-row items-center justify-between px-8 pt-8">
-        <h1 className="text-white text-2xl font-bold" style={{fontFamily: 'inherit'}}>Ongoing Polls</h1>
-        {/* Hamburger menu icon */}
-        <div className="w-8 h-8 flex flex-col justify-center items-center">
-          <span className="block w-6 h-1 bg-white rounded mb-1"></span>
-          <span className="block w-6 h-1 bg-white rounded mb-1"></span>
-          <span className="block w-6 h-1 bg-white rounded"></span>
-        </div>
-      </div>
-      {/* Add Poll Form */}
-      <form
-        onSubmit={handleAddPoll}
-        className="relative z-10 w-full max-w-xs flex flex-col gap-2 px-8 pt-6"
-      >
-        <input
-          type="text"
-          placeholder="Club Name"
-          className="rounded-full px-4 py-2 bg-[#D9D9D9] text-black text-sm font-semibold outline-none"
-          value={club}
-          onChange={e => setClub(e.target.value)}
-          required
-        />
-        <input
-          type="text"
-          placeholder="Poll Title"
-          className="rounded-full px-4 py-2 bg-[#D9D9D9] text-black text-sm font-semibold outline-none"
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          required
-        />
-        <input
-          type="text"
-          placeholder="Extra Info (optional)"
-          className="rounded-full px-4 py-2 bg-[#D9D9D9] text-black text-sm font-semibold outline-none"
-          value={extra}
-          onChange={e => setExtra(e.target.value)}
-        />
-        <button
-          type="submit"
-          className="rounded-full px-4 py-2 bg-[#11777B] text-white text-sm font-bold mt-2 transition hover:bg-[#0e5e62]"
-        >
-          Add Poll
-        </button>
+
+      <header className="w-full px-6 pt-8 pb-4 flex items-center justify-between relative z-10">
+        <h1 className="text-foreground text-xl font-semibold">Ongoing Polls</h1>
+      </header>
+
+      <form onSubmit={handleAddPoll} className="w-full max-w-xs mx-auto px-6 flex flex-col gap-3 relative z-10">
+        <Input type="text" placeholder="Club name" value={club} onChange={e => setClub(e.target.value)} required />
+        <Input type="text" placeholder="Poll title" value={title} onChange={e => setTitle(e.target.value)} required />
+        <Input type="text" placeholder="Extra info (optional)" value={extra} onChange={e => setExtra(e.target.value)} />
+        <Button type="submit" className="mt-1">Add poll</Button>
       </form>
-      {/* Poll cards */}
-      <div className="relative z-10 w-full flex flex-col gap-6 px-4 pt-8">
+
+      <main className="w-full px-4 pt-6 pb-10 space-y-4 relative z-10">
         {polls.map((poll, idx) => (
-          <div
-            key={idx}
-            className={`rounded-3xl ${poll.color} p-5 flex flex-col gap-3 relative`}
-            style={{ minHeight: 150 }}
-          >
-            <div className="text-white text-xs font-semibold">{poll.club}</div>
-            <div className="text-white text-xl font-bold leading-tight">{poll.title}</div>
-            {poll.extra && (
-              <div className="text-white text-xs">{poll.extra}</div>
-            )}
-            <div className="flex flex-row items-center mt-2">
-              <input
-                type="text"
-                placeholder="Enter code:"
-                className="rounded-full px-4 py-2 bg-[#232229] text-white text-sm font-semibold outline-none mr-2"
-                style={{ minWidth: 100 }}
-              />
-            </div>
-          </div>
+          <Card key={idx} className="border-muted/40 bg-card/60 backdrop-blur">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">{poll.club}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-foreground text-lg font-semibold">{poll.title}</div>
+              {poll.extra && <div className="text-muted-foreground text-xs mt-1">{poll.extra}</div>}
+              <div className="flex items-center gap-2 mt-3">
+                <Input type="text" placeholder="Enter code" />
+                <Button size="sm">Join</Button>
+              </div>
+            </CardContent>
+          </Card>
         ))}
-      </div>
+      </main>
     </div>
   );
 }

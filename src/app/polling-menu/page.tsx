@@ -35,7 +35,7 @@ export default function OngoingPollsPage() {
   ]);
 
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-  const [cardStyle, setCardStyle] = useState<any>({});
+  const [cardStyle, setCardStyle] = useState<React.CSSProperties>({});
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const router = useRouter();
 
@@ -80,7 +80,7 @@ export default function OngoingPollsPage() {
         const targetHeight = window.innerHeight * 0.8;
         const scaleX = targetWidth / rect.width;
         const scaleY = targetHeight / rect.height;
-        setCardStyle((prev: any) => ({
+        setCardStyle((prev: React.CSSProperties) => ({
           ...prev,
           transform: `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`,
           boxShadow: "0 10px 40px 0 rgba(0,0,0,0.3)",
@@ -244,7 +244,7 @@ export default function OngoingPollsPage() {
             </div>
           );
         })}
-      </div>
+              </div>
     </div>
   );
 }

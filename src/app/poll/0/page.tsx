@@ -1,5 +1,4 @@
 "use client";
-import { useParams } from "next/navigation";
 
 const colorPalette = [
   "bg-[#3B4A5A]",
@@ -43,12 +42,11 @@ export default function PollPage() {
   ];
 
   // Shuffle and pick 4 options
-  function getRandomOptions(arr, n) {
+  function getRandomOptions(arr: string[], n: number): string[] {
     const shuffled = arr.slice().sort(() => 0.5 - Math.random());
     return shuffled.slice(0, n);
   }
   const optionsToShow = getRandomOptions(votingOptions, 4);
-  const params = useParams();
   // const id = Number(params.id);
   const id = 0
   const poll = pollData[id];

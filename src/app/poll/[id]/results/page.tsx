@@ -55,9 +55,11 @@ export default function PollResultsPage() {
           .from("votes_single")
           .select("option_id")
           .eq("campaign_id", id);
-        const labelById = new Map<string, string>((opts || []).map((o: any) => [o.id, o.label]));
+        const labelById = new Map<string, string>(
+          ((opts || []) as Array<{ id: string; label: string }>).map((o) => [o.id, o.label])
+        );
         const counts = new Map<string, number>();
-        (votes || []).forEach((v: any) => {
+        ((votes || []) as Array<{ option_id: string }>).forEach((v) => {
           counts.set(v.option_id, (counts.get(v.option_id) || 0) + 1);
         });
         const rows: Row[] = Array.from(labelById.entries()).map(([option_id, label]) => ({
@@ -70,7 +72,7 @@ export default function PollResultsPage() {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, role]);
 
   if (loading) {
     return (

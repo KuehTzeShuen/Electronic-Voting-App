@@ -35,12 +35,8 @@ export default function DebugDatabasePage() {
       return;
     }
     const names = Array.isArray(data)
-      ? data
-          .map((r: unknown) =>
-            typeof r === "object" && r !== null && "table_name" in r
-              ? String((r as Record<string, unknown>).table_name)
-              : null
-          )
+      ? (data as Array<{ table_name?: unknown }>)
+          .map((r) => (typeof r.table_name === "string" ? r.table_name : null))
           .filter((v): v is string => !!v)
       : [];
     setRpcTables(names);
@@ -55,7 +51,7 @@ export default function DebugDatabasePage() {
         tablesToQuery.map(async (table) => {
           const { data, error } = await supabase.from(table).select("*").limit(100);
           next[table] = {
-            rows: data ?? [],
+            rows: (data as unknown[]) ?? [],
             error: error ? error.message : null,
           };
         })
@@ -161,7 +157,7 @@ export default function DebugDatabasePage() {
         // refresh table data
         await loadData();
       } catch (e: unknown) {
-        const msg = e && typeof e === 'object' && 'message' in e ? String((e as any).message) : 'Upload failed';
+        const msg = e && typeof e === 'object' && 'message' in e ? String((e as { message?: unknown }).message) : 'Upload failed';
         setUploadMsg(prev => ({ ...prev, [table]: msg }));
       } finally {
         setUploading(prev => ({ ...prev, [table]: false }));

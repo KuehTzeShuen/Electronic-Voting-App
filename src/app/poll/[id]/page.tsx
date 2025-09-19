@@ -35,14 +35,14 @@ export default function PollDetailPage() {
         .select("title, description, club, starts_at, ends_at")
         .eq("id", id)
         .maybeSingle();
-      if (camp) setCampaign(camp as any);
+      if (camp) setCampaign(camp as { title: string; description: string | null; club: string | null; starts_at: string | null; ends_at: string | null });
       // Load options for this campaign
       const { data: opt } = await supabase
         .from("campaign_options")
         .select("id, label, description")
         .eq("campaign_id", id)
         .order("label", { ascending: true });
-      if (Array.isArray(opt)) setOptions(opt as any);
+      if (Array.isArray(opt)) setOptions(opt as { id: string; label: string; description: string | null }[]);
 
       // Check if this voter already voted in this campaign
       const voterId = await getVoterId();
@@ -54,7 +54,7 @@ export default function PollDetailPage() {
         .maybeSingle();
       if (existing?.option_id) setVotedOptionId(existing.option_id as string);
     })();
-  }, []);
+  }, [id]);
 
   async function getVoterId(): Promise<string> {
     // Prefer Supabase auth user id when available
@@ -95,8 +95,9 @@ export default function PollDetailPage() {
       if (error) throw error;
       setVoteMsg("Vote submitted.");
       setVotedOptionId(optionId);
-    } catch (e: any) {
-      setVoteMsg(e?.message || "Failed to submit vote");
+    } catch (e) {
+      const msg = e && typeof e === 'object' && 'message' in e ? String((e as { message?: unknown }).message) : 'Failed to submit vote';
+      setVoteMsg(msg);
     } finally {
       setSubmitting(null);
     }

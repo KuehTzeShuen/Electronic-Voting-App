@@ -1,20 +1,13 @@
 "use client";
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import React from "react";
 
-const colorPalette = [
-  "bg-[#3B4A5A]",
-  "bg-[#6B4A9B]",
-  "bg-[#2E5D47]",
-  "bg-[#B07D62]",
-  "bg-[#11777B]",
-  "bg-[#A23E48]",
-];
+// colorPalette no longer used
 
 type Campaign = {
   id: string;
@@ -41,9 +34,7 @@ export default function OngoingPollsPage() {
   })();
   const [role, setRole] = useState<"student" | "admin" | null>(initialRole);
   const [roleLoading, setRoleLoading] = useState<boolean>(true);
-  const [club, setClub] = useState("");
-  const [title, setTitle] = useState("");
-  const [extra, setExtra] = useState("");
+  // Admin add form moved to /polls/new; local inputs removed
 
   // const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   // const [cardStyle, setCardStyle] = useState<React.CSSProperties>({});

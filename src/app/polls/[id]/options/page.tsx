@@ -89,8 +89,9 @@ export default function ManageOptionsPage() {
         .eq("campaign_id", campaignId)
         .order("label", { ascending: true });
       if (Array.isArray(data)) setOptions(data as OptionRow[]);
-    } catch (err: any) {
-      setError(err?.message || "Failed to add option");
+    } catch (err) {
+      const msg = err && typeof err === 'object' && 'message' in err ? String((err as { message?: unknown }).message) : 'Failed to add option';
+      setError(msg);
     } finally {
       setSaving(false);
     }

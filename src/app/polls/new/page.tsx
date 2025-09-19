@@ -84,7 +84,7 @@ export default function NewPollPage() {
       if (error) throw error;
       router.push(`/polls/${id}/options`);
     } catch (err: unknown) {
-      const msg = err && typeof err === 'object' && 'message' in err ? String((err as any).message) : 'Failed to create poll';
+      const msg = err && typeof err === 'object' && 'message' in err ? String((err as { message?: unknown }).message) : 'Failed to create poll';
       setError(msg);
     } finally {
       setSaving(false);

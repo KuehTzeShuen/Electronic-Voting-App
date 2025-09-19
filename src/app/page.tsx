@@ -7,10 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type Step = "login";
-
 export default function LoginPage() {
-  const [step] = useState<Step>("login");
   const [email, setEmail] = useState("");
   const [studentId, setStudentId] = useState("");
   const [role, setRole] = useState<"student" | "admin">("student");

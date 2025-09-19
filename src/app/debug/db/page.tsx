@@ -12,6 +12,9 @@ export default function DebugDatabasePage() {
   const [tablesInput, setTablesInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<Record<string, TableResult>>({});
+  const [deleting, setDeleting] = useState<Record<string, Record<number, boolean>>>({});
+  const [uploading, setUploading] = useState<Record<string, boolean>>({});
+  const [uploadMsg, setUploadMsg] = useState<Record<string, string | null>>({});
   const [rpcTables, setRpcTables] = useState<string[] | null>(null);
   const [rpcError, setRpcError] = useState<string | null>(null);
 
@@ -32,12 +35,8 @@ export default function DebugDatabasePage() {
       return;
     }
     const names = Array.isArray(data)
-      ? data
-          .map((r: unknown) =>
-            typeof r === "object" && r !== null && "table_name" in r
-              ? String((r as Record<string, unknown>).table_name)
-              : null
-          )
+      ? (data as Array<{ table_name?: unknown }>)
+          .map((r) => (typeof r.table_name === "string" ? r.table_name : null))
           .filter((v): v is string => !!v)
       : [];
     setRpcTables(names);
@@ -52,7 +51,7 @@ export default function DebugDatabasePage() {
         tablesToQuery.map(async (table) => {
           const { data, error } = await supabase.from(table).select("*").limit(100);
           next[table] = {
-            rows: data ?? [],
+            rows: (data as unknown[]) ?? [],
             error: error ? error.message : null,
           };
         })
@@ -62,6 +61,110 @@ export default function DebugDatabasePage() {
       setIsLoading(false);
     }
   }, [tablesToQuery]);
+
+  const inferKeyFilter = (row: Record<string, unknown>): Record<string, unknown> => {
+    // Prefer common primary key columns if present; otherwise fall back to full row match (debug-only)
+    const candidates = ["id", "uuid", "student_id"]; // extend as needed
+    for (const key of candidates) {
+      if (key in row && row[key] !== undefined && row[key] !== null) {
+        return { [key]: row[key] } as Record<string, unknown>;
+      }
+    }
+    return row;
+  };
+
+  const handleDeleteRow = useCallback(
+    async (table: string, idx: number, row: unknown) => {
+      if (!row || typeof row !== "object") return;
+      setDeleting((prev) => ({ ...prev, [table]: { ...(prev[table] || {}), [idx]: true } }));
+      try {
+        const filter = inferKeyFilter(row as Record<string, unknown>);
+        const query = supabase.from(table).delete().match(filter);
+        const { error } = await query;
+        if (error) throw error;
+        // Optimistically remove from UI
+        setResults((prev) => {
+          const current = prev[table];
+          if (!current) return prev;
+          const nextRows = current.rows.filter((_, i) => i !== idx);
+          return { ...prev, [table]: { ...current, rows: nextRows } };
+        });
+      } finally {
+        setDeleting((prev) => ({ ...prev, [table]: { ...(prev[table] || {}), [idx]: false } }));
+      }
+    },
+    []
+  );
+
+  const parseCsv = async (file: File): Promise<{ headers: string[]; rows: Record<string, unknown>[] }> => {
+    const text = await file.text();
+    const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter(l => l.trim().length > 0);
+    if (lines.length === 0) return { headers: [], rows: [] };
+    const parseLine = (line: string): string[] => {
+      const out: string[] = [];
+      let cur = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            cur += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === ',' && !inQuotes) {
+          out.push(cur);
+          cur = "";
+        } else {
+          cur += ch;
+        }
+      }
+      out.push(cur);
+      return out.map(s => s.trim());
+    };
+    const headers = parseLine(lines[0]);
+    const rows = lines.slice(1).map(line => {
+      const cols = parseLine(line);
+      const obj: Record<string, unknown> = {};
+      headers.forEach((h, idx) => {
+        obj[h] = cols[idx] ?? null;
+      });
+      return obj;
+    });
+    return { headers, rows };
+  };
+
+  const handleUploadCsv = useCallback(
+    async (table: string, file: File | null) => {
+      if (!file) return;
+      setUploadMsg(prev => ({ ...prev, [table]: null }));
+      setUploading(prev => ({ ...prev, [table]: true }));
+      try {
+        const { rows } = await parseCsv(file);
+        if (rows.length === 0) {
+          setUploadMsg(prev => ({ ...prev, [table]: "No rows found in CSV." }));
+          return;
+        }
+        // Insert in chunks to avoid payload limits
+        const chunkSize = 500;
+        for (let i = 0; i < rows.length; i += chunkSize) {
+          const chunk = rows.slice(i, i + chunkSize);
+          const { error } = await supabase.from(table).insert(chunk);
+          if (error) throw error;
+        }
+        setUploadMsg(prev => ({ ...prev, [table]: `Uploaded ${rows.length} rows.` }));
+        // refresh table data
+        await loadData();
+      } catch (e: unknown) {
+        const msg = e && typeof e === 'object' && 'message' in e ? String((e as { message?: unknown }).message) : 'Upload failed';
+        setUploadMsg(prev => ({ ...prev, [table]: msg }));
+      } finally {
+        setUploading(prev => ({ ...prev, [table]: false }));
+      }
+    },
+    [loadData]
+  );
 
   return (
     <div className="fixed inset-0 bg-background text-foreground overflow-auto">
@@ -149,11 +252,22 @@ grant execute on function list_tables() to anon;`}
                 )}
               </div>
               <div className="p-4 overflow-x-auto">
+                <div className="flex items-center gap-3 mb-3">
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={(e) => handleUploadCsv(table, e.target.files?.[0] ?? null)}
+                    disabled={!!uploading[table]}
+                  />
+                  {uploading[table] && <span className="text-xs text-muted-foreground">Uploading...</span>}
+                  {uploadMsg[table] && <span className="text-xs">{uploadMsg[table]}</span>}
+                </div>
                 {tableResult ? (
                   tableResult.rows.length > 0 ? (
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="text-left text-muted-foreground">
+                          <th className="px-2 py-1 border-b border-border font-normal w-[1%]"></th>
                           {Object.keys(tableResult.rows[0] as Record<string, unknown>).map((key) => (
                             <th key={key} className="px-2 py-1 border-b border-border font-normal">
                               {key}
@@ -164,6 +278,18 @@ grant execute on function list_tables() to anon;`}
                       <tbody>
                         {tableResult.rows.map((row, idx) => (
                           <tr key={idx} className="border-b border-border/60">
+                            <td className="px-2 py-1 align-top">
+                              <button
+                                type="button"
+                                aria-label="Delete row"
+                                title="Delete row"
+                                disabled={!!deleting[table]?.[idx]}
+                                onClick={() => handleDeleteRow(table, idx, row)}
+                                className="inline-flex items-center justify-center rounded bg-destructive/10 text-destructive hover:bg-destructive/20 disabled:opacity-50 px-2 py-1 text-xs"
+                              >
+                                ×
+                              </button>
+                            </td>
                             {Object.entries(row as Record<string, unknown>).map(([k, v]) => (
                               <td key={k} className="px-2 py-1 align-top">
                                 <pre className="text-xs whitespace-pre-wrap break-words">

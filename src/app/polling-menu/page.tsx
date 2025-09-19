@@ -1,44 +1,40 @@
 "use client";
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import React from "react";
 
-const colorPalette = [
-  "bg-[#3B4A5A]",
-  "bg-[#6B4A9B]",
-  "bg-[#2E5D47]",
-  "bg-[#B07D62]",
-  "bg-[#11777B]",
-  "bg-[#A23E48]",
-];
+// colorPalette no longer used
+
+type Campaign = {
+  id: string;
+  title: string;
+  description: string | null;
+  vote_type: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  is_published: boolean | null;
+  club: string | null;
+};
 
 export default function OngoingPollsPage() {
-  const [polls, setPolls] = useState([
-    {
-      club: "Monash Cybersecurity Club",
-      title: "2025 OGM MONSEC President Poll",
-      color: colorPalette[0],
-      extra: "",
-    },
-    {
-      club: "Monash Cybersecurity Club",
-      title: "2025 OGM MONSEC President Poll",
-      color: colorPalette[1],
-      extra: "100 MONSEC Merch coupon available",
-    },
-    {
-      club: "Monash Cybersecurity Club",
-      title: "2025 OGM MONSEC Secretary Poll",
-      color: colorPalette[2],
-      extra: "",
-    },
-  ]);
-  const [codes, setCodes] = useState<string[]>([]);
-  const [club, setClub] = useState("");
-  const [title, setTitle] = useState("");
-  const [extra, setExtra] = useState("");
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [codes, setCodes] = useState<Record<string, string>>({});
+  const initialRole = ((): "student" | "admin" | null => {
+    if (typeof window === "undefined") return null;
+    try {
+      const stored = localStorage.getItem("appRole");
+      return stored === "admin" || stored === "student" ? stored : null;
+    } catch {
+      return null;
+    }
+  })();
+  const [role, setRole] = useState<"student" | "admin" | null>(initialRole);
+  const [roleLoading, setRoleLoading] = useState<boolean>(true);
+  // Admin add form moved to /polls/new; local inputs removed
 
   // const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   // const [cardStyle, setCardStyle] = useState<React.CSSProperties>({});
@@ -94,31 +90,59 @@ export default function OngoingPollsPage() {
   //   }
   // };
 
-  // Track code input for each poll card
-  const handleCodeChange = (idx: number, value: string) => {
-    setCodes(prev => {
-      const next = [...prev];
-      next[idx] = value;
-      return next;
-    });
+  // Hydrate role once; show skeleton until resolved
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const { data: session } = await supabase.auth.getUser();
+        const email = session.user?.email;
+        if (!email) return;
+        const desired = initialRole;
+        const base = supabase.from("users").select("role").eq("email", email).limit(1);
+        const { data } = desired ? await base.eq("role", desired).maybeSingle() : await base.maybeSingle();
+        const resolved = (data?.role === "admin" || data?.role === "student") ? data.role : initialRole;
+        if (resolved) setRole(resolved);
+      } finally {
+        setRoleLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Track code input keyed by campaign id
+  const handleCodeChange = (id: string, value: string) => {
+    setCodes(prev => ({ ...prev, [id]: value }));
   };
 
   // Join with code (basic client-side check then navigate)
-  const handleJoin = (idx: number) => {
-    const code = (codes[idx] || "").trim();
+  const handleJoin = async (id: string) => {
+    const code = (codes[id] || "").trim();
     if (!code) return; // require a non-empty code
-    router.push(`/poll/${idx}`);
+    // Check code against campaigns
+    const { data } = await supabase
+      .from("campaigns")
+      .select("id")
+      .eq("id", id)
+      .eq("code", code)
+      .maybeSingle();
+    if (!data) {
+      alert("Invalid access code for this poll");
+      return;
+    }
+    router.push(`/poll/${id}`);
   };
 
-  // Add new poll
-  const handleAddPoll = (e: React.FormEvent) => {
-    e.preventDefault();
-    const color = colorPalette[polls.length % colorPalette.length];
-    setPolls([...polls, { club, title, color, extra }]);
-    setClub("");
-    setTitle("");
-    setExtra("");
-  };
+  // Load campaigns
+  React.useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("campaigns")
+        .select("id, title, description, vote_type, starts_at, ends_at, is_published, club")
+        .order("starts_at", { ascending: false })
+        .limit(100);
+      if (Array.isArray(data)) setCampaigns(data as Campaign[]);
+    })();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -147,35 +171,47 @@ export default function OngoingPollsPage() {
 
       <header className="w-full px-6 pt-8 pb-4 flex items-center justify-between relative z-10">
         <h1 className="text-foreground text-2xl font-semibold">Ongoing Polls</h1>
+        {!roleLoading && role === "admin" && (
+          <Button size="sm" onClick={() => router.push("/polls/new")}>Add poll</Button>
+        )}
       </header>
 
-      <form onSubmit={handleAddPoll} className="w-full max-w-xs mx-auto px-6 flex flex-col gap-3 relative z-10">
-        <Input type="text" placeholder="Club name" value={club} onChange={e => setClub(e.target.value)} required />
-        <Input type="text" placeholder="Poll title" value={title} onChange={e => setTitle(e.target.value)} required />
-        <Input type="text" placeholder="Extra info (optional)" value={extra} onChange={e => setExtra(e.target.value)} />
-        <Button type="submit" className="mt-1">Add poll</Button>
-      </form>
+      {/* Admin add form moved to /polls/new */}
 
       <main className="w-full px-4 pt-6 pb-10 space-y-4 relative z-10">
-        {polls.map((poll, idx) => (
-          <Card key={idx} className="w-full max-w-2xl mx-auto border-muted/40 bg-card/60 backdrop-blur">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">{poll.club}</CardTitle>
-            </CardHeader>
+        {roleLoading && (
+          <div className="w-full max-w-2xl mx-auto">
+            <div className="h-20 rounded-xl bg-muted animate-pulse mb-3" />
+            <div className="h-20 rounded-xl bg-muted animate-pulse mb-3" />
+            <div className="h-20 rounded-xl bg-muted animate-pulse" />
+          </div>
+        )}
+        {!roleLoading && campaigns.map((c) => (
+          <Card key={c.id} className="w-full max-w-2xl mx-auto border-muted/40 bg-card/60 backdrop-blur">
+            <CardHeader className="pb-0"></CardHeader>
             <CardContent>
-              <div className="text-foreground text-lg font-semibold">{poll.title}</div>
-              {poll.extra && <div className="text-muted-foreground text-xs mt-1">{poll.extra}</div>}
-              <div className="flex items-center gap-2 mt-3">
-                <Input
-                  type="text"
-                  placeholder="Enter code"
-                  value={codes[idx] || ""}
-                  onChange={e => handleCodeChange(idx, e.target.value)}
-                />
-                <Button size="sm" onClick={() => handleJoin(idx)} disabled={(codes[idx] || "").trim() === ""}>
-                  Join
-                </Button>
-              </div>
+              {c.club && <div className="text-sm text-muted-foreground font-medium">{c.club}</div>}
+              <div className="text-foreground text-lg font-semibold mt-1">{c.title}</div>
+              {c.description && <div className="text-muted-foreground text-xs mt-1">{c.description}</div>}
+              {role === "student" ? (
+                <div className="flex items-center gap-2 mt-3">
+                  <Input
+                    type="text"
+                    placeholder="Enter code"
+                    value={codes[c.id] || ""}
+                    onChange={e => handleCodeChange(c.id, e.target.value)}
+                  />
+                  <Button size="sm" onClick={() => handleJoin(c.id)} disabled={(codes[c.id] || "").trim() === ""}>
+                    Join
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mt-3">
+                  <Button size="sm" variant="secondary" onClick={() => router.push(`/poll/${c.id}/results`)}>
+                    View votes
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}

@@ -158,6 +158,7 @@ export default function NewPollPage() {
                   value={startsAt}
                   onChange={e => setStartsAt(e.target.value)}
                   required
+                  className="[&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
                 />
               </div>
               <div>
@@ -167,6 +168,7 @@ export default function NewPollPage() {
                   value={endsAt}
                   onChange={e => setEndsAt(e.target.value)}
                   required
+                  className="[&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
                 />
               </div>
             </div>

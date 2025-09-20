@@ -96,14 +96,39 @@ export default function OngoingPollsPage() {
   React.useEffect(() => {
     (async () => {
       try {
-        const { data: session } = await supabase.auth.getUser();
-        const email = session.user?.email;
-        if (!email) return;
-        const desired = initialRole;
-        const base = supabase.from("users").select("role").eq("email", email).limit(1);
-        const { data } = desired ? await base.eq("role", desired).maybeSingle() : await base.maybeSingle();
-        const resolved = (data?.role === "admin" || data?.role === "student") ? data.role : initialRole;
-        if (resolved) setRole(resolved);
+        // Check authentication using localStorage (same as login page)
+        let email: string | null = null;
+        let storedRole: string | null = null;
+        
+        try {
+          email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
+          storedRole = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
+        } catch (e) {
+          // localStorage not available
+        }
+        
+        if (!email || !storedRole) {
+          // No authentication data, redirect to login
+          router.push("/");
+          return;
+        }
+        
+        // Verify the user exists in the database
+        const { data, error: fetchError } = await supabase
+          .from("users")
+          .select("role")
+          .eq("email", email)
+          .eq("role", storedRole)
+          .maybeSingle();
+          
+        if (fetchError || !data) {
+          // User not found or error, redirect to login
+          router.push("/");
+          return;
+        }
+        
+        // Set the role from localStorage (which was validated against DB)
+        setRole(storedRole as "student" | "admin");
       } finally {
         setRoleLoading(false);
       }
@@ -134,15 +159,45 @@ export default function OngoingPollsPage() {
     router.push(`/poll/${id}`);
   };
 
-  // Load campaigns
+  // Load campaigns with caching
   React.useEffect(() => {
     (async () => {
+      const CACHE_KEY = "polling-menu-campaigns";
+      const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+      
+      // Try to load from cache first
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data: cachedData, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_DURATION) {
+            setCampaigns(cachedData as Campaign[]);
+            return; // Use cached data
+          }
+        }
+      } catch (e) {
+        // Cache invalid, continue to fetch
+      }
+
+      // Fetch fresh data
       const { data } = await supabase
         .from("campaigns")
         .select("id, title, description, vote_type, starts_at, ends_at, is_published, club")
         .order("starts_at", { ascending: false })
         .limit(100);
-      if (Array.isArray(data)) setCampaigns(data as Campaign[]);
+      
+      if (Array.isArray(data)) {
+        setCampaigns(data as Campaign[]);
+        // Cache the data
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
+            data,
+            timestamp: Date.now()
+          }));
+        } catch (e) {
+          // Cache failed, but data is still loaded
+        }
+      }
     })();
   }, []);
 
@@ -150,8 +205,13 @@ export default function OngoingPollsPage() {
     const nextOpen = !profileOpen;
     setProfileOpen(nextOpen);
     if (nextOpen && !profile) {
-      const { data: session } = await supabase.auth.getUser();
-      const email = session.user?.email ?? null;
+      // Get email from localStorage (same as authentication check)
+      let email: string | null = null;
+      try {
+        email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
+      } catch (e) {
+        // localStorage not available
+      }
       let userRow: { first_name: string | null; last_name: string | null; student_id: string | null; role: string | null } | null = null;
       if (email) {
         const { data } = await supabase
@@ -226,8 +286,17 @@ export default function OngoingPollsPage() {
               <div><span className="font-medium text-foreground">Student ID:</span> {profile?.student_id ?? "-"}</div>
               <div><span className="font-medium text-foreground">Role:</span> {profile?.role ?? "-"}</div>
             </div>
-            <div className="mt-3 flex justify-end">
+            <div className="mt-3 flex justify-end gap-2">
               <Button size="sm" variant="secondary" onClick={toggleProfile}>Close</Button>
+              <Button size="sm" variant="destructive" onClick={() => {
+                try {
+                  localStorage.removeItem("appEmail");
+                  localStorage.removeItem("appRole");
+                } catch (e) {
+                  // localStorage not available
+                }
+                router.push("/");
+              }}>Logout</Button>
             </div>
           </div>
         </>

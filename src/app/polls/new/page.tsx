@@ -1,11 +1,4 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { generateUUID } from "@/lib/uuid";
 
 export default function NewPollPage() {
   const router = useRouter();
@@ -63,8 +56,8 @@ export default function NewPollPage() {
         throw new Error("End time must be after start time");
       }
       // Create campaign record
-      const id = crypto.randomUUID();
-      const hostId = crypto.randomUUID();
+      const id = generateUUID();
+      const hostId = generateUUID();
       if (!code || code.trim().length === 0) {
         throw new Error("A poll access code is required");
       }

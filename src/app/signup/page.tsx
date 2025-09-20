@@ -108,7 +108,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center relative overflow-hidden">
       <header className="w-full px-6 pt-8 pb-6 relative z-10">
-        <h1 className="text-foreground text-xl font-semibold">Sign up</h1>
+        <h1 className="text-foreground text-2xl font-semibold">Sign up</h1>
       </header>
 
       <div className="w-full max-w-xs px-6 relative z-10">
@@ -118,7 +118,7 @@ export default function SignupPage() {
       {step === "email" && (
         <Card className="w-full max-w-xs border-muted/40 bg-card/60 backdrop-blur relative z-10">
           <CardHeader>
-            <CardTitle className="text-sm text-muted-foreground">Student Email</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Sign up using your student email</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={sendOtp} className="flex flex-col gap-4">

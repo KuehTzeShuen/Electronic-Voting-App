@@ -159,27 +159,10 @@ export default function OngoingPollsPage() {
     router.push(`/poll/${id}`);
   };
 
-  // Load campaigns with caching
+  // Load campaigns without caching
   React.useEffect(() => {
     (async () => {
-      const CACHE_KEY = "polling-menu-campaigns";
-      const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-      
-      // Try to load from cache first
-      try {
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-          const { data: cachedData, timestamp } = JSON.parse(cached);
-          if (Date.now() - timestamp < CACHE_DURATION) {
-            setCampaigns(cachedData as Campaign[]);
-            return; // Use cached data
-          }
-        }
-      } catch (e) {
-        // Cache invalid, continue to fetch
-      }
-
-      // Fetch fresh data
+      // Fetch fresh data from database
       const { data } = await supabase
         .from("campaigns")
         .select("id, title, description, vote_type, starts_at, ends_at, is_published, club")
@@ -188,15 +171,6 @@ export default function OngoingPollsPage() {
       
       if (Array.isArray(data)) {
         setCampaigns(data as Campaign[]);
-        // Cache the data
-        try {
-          localStorage.setItem(CACHE_KEY, JSON.stringify({
-            data,
-            timestamp: Date.now()
-          }));
-        } catch (e) {
-          // Cache failed, but data is still loaded
-        }
       }
     })();
   }, []);
@@ -320,7 +294,7 @@ export default function OngoingPollsPage() {
               <div className="text-foreground text-lg font-semibold mt-1">{c.title}</div>
               {c.description && <div className="text-muted-foreground text-xs mt-1">{c.description}</div>}
               {role === "student" ? (
-                <div className="flex items-center gap-2 mt-3">
+                <div className="flex items-center gap-2 mt-4">
                   <Input
                     type="text"
                     placeholder="Enter code"
@@ -332,7 +306,7 @@ export default function OngoingPollsPage() {
                   </Button>
                 </div>
               ) : (
-              <div className="flex items-center gap-2 mt-3">
+              <div className="flex items-center gap-2 mt-4">
                   <Button size="sm" variant="secondary" onClick={() => router.push(`/poll/${c.id}/results`)}>
                     View votes
                   </Button>

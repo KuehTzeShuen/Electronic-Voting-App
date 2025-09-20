@@ -1,4 +1,12 @@
+"use client";
+
 import { generateUUID } from "@/lib/uuid";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export default function NewPollPage() {
   const router = useRouter();
@@ -104,9 +112,10 @@ export default function NewPollPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground px-6 py-8">
+      <h1 className="text-foreground text-2xl font-semibold mb-6">Add New Poll</h1>
       <Card className="w-full max-w-xl mx-auto border-muted/40 bg-card/60 backdrop-blur">
         <CardHeader>
-          <CardTitle className="text-sm text-muted-foreground">Create a new poll</CardTitle>
+          <CardTitle className="text-sm text-muted-foreground">Configure the poll</CardTitle>
         </CardHeader>
         <CardContent>
           {error && <div className="mb-3 text-sm text-destructive">{error}</div>}

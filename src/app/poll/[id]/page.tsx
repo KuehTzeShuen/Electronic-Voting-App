@@ -216,6 +216,8 @@ export default function PollDetailPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground px-6 py-8">
+      <h1 className="text-foreground text-2xl font-semibold mb-6">Cast Your Vote</h1>
+      
       {campaignLoading ? (
         <>
           <div className="h-6 bg-muted animate-pulse rounded mb-2"></div>
@@ -286,6 +288,14 @@ export default function PollDetailPage() {
                     ))}
               </>
             )}
+          </div>
+          <div className="mt-4 flex justify-end">
+            <button 
+              className="rounded-md bg-secondary text-secondary-foreground px-4 py-2 text-sm"
+              onClick={() => router.push("/polling-menu")}
+            >
+              Back to Polling Menu
+            </button>
           </div>
         </div>
       ) : (

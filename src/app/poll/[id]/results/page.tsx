@@ -57,6 +57,7 @@ export default function PollResultsPage() {
     }
   }, [id]);
 
+  // Initial data loading effect
   useEffect(() => {
     (async () => {
       try {
@@ -83,9 +84,48 @@ export default function PollResultsPage() {
         // Load initial vote results
         await loadVoteResults();
 
-        // Set up real-time subscription for live updates
-        console.log('Setting up real-time subscription for poll:', id);
-        const subscription = supabase
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [id, role, loadVoteResults]);
+
+  // Separate effect for real-time subscription (runs after initial load)
+  useEffect(() => {
+    if (loading || !id) return; // Don't set up subscription until initial load is complete
+
+    let subscription: any = null;
+    let pollInterval: NodeJS.Timeout | null = null;
+    let retryTimeout: NodeJS.Timeout | null = null;
+
+    const setupSubscription = async (retryCount = 0) => {
+      try {
+        console.log(`Setting up real-time subscription for poll: ${id} (attempt ${retryCount + 1})`);
+        
+        // Much longer delay - wait for everything to be fully ready
+        const delay = retryCount === 0 ? 10 : Math.min(10 + (retryCount * 100), 400);
+        console.log(`Waiting ${delay}ms before subscription setup...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        // Check if Supabase client is ready by testing a simple query
+        try {
+          const { error: testError } = await supabase
+            .from('votes_single')
+            .select('id')
+            .limit(1);
+          
+          if (testError) {
+            console.warn('Supabase client not ready, retrying...', testError);
+            throw new Error('Client not ready');
+          }
+        } catch (clientError) {
+          console.warn('Supabase client readiness check failed:', clientError);
+          throw new Error('Client not ready');
+        }
+        
+        console.log('Supabase client is ready, proceeding with subscription...');
+        
+        subscription = supabase
           .channel(`votes-${id}`)
           .on(
             'postgres_changes',
@@ -101,31 +141,97 @@ export default function PollResultsPage() {
               loadVoteResults();
             }
           )
-          .subscribe((status) => {
+          .subscribe((status, err) => {
             console.log('Subscription status:', status);
+            if (err) {
+              console.error('Subscription error details:', err);
+            }
             setSubscriptionStatus(status);
+            
             if (status === 'SUBSCRIBED') {
               console.log('Successfully subscribed to real-time updates');
+              // Clear any existing polling if subscription succeeds
+              if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+              }
             } else if (status === 'CHANNEL_ERROR') {
               console.error('Failed to subscribe to real-time updates');
-              // Fallback to polling every 5 seconds if real-time fails
-              const pollInterval = setInterval(() => {
-                console.log('Polling for updates (real-time failed)');
-                loadVoteResults();
-              }, 5000);
-              return () => clearInterval(pollInterval);
+              console.error('Error details:', err);
+              
+              // Retry subscription with progressive delay (max 3 retries)
+              if (retryCount < 3 && !retryTimeout) {
+                retryTimeout = setTimeout(() => {
+                  console.log(`Retrying subscription (attempt ${retryCount + 2})...`);
+                  retryTimeout = null;
+                  setupSubscription(retryCount + 1);
+                }, 3000);
+              } else {
+                console.log('Max retries reached, falling back to polling');
+                // Fallback to polling every 5 seconds if real-time fails
+                if (!pollInterval) {
+                  pollInterval = setInterval(() => {
+                    console.log('Polling for updates (real-time failed)');
+                    loadVoteResults();
+                  }, 5000);
+                }
+              }
+            } else if (status === 'TIMED_OUT') {
+              console.error('Subscription timed out');
+              // Retry subscription with progressive delay (max 3 retries)
+              if (retryCount < 3 && !retryTimeout) {
+                retryTimeout = setTimeout(() => {
+                  console.log(`Retrying subscription after timeout (attempt ${retryCount + 2})...`);
+                  retryTimeout = null;
+                  setupSubscription(retryCount + 1);
+                }, 3000);
+              }
+            } else if (status === 'CLOSED') {
+              console.log('Subscription closed');
             }
           });
-
-        // Cleanup subscription on unmount
-        return () => {
-          subscription.unsubscribe();
-        };
-      } finally {
-        setLoading(false);
+      } catch (error) {
+        console.error('Error setting up subscription:', error);
+        setSubscriptionStatus('CHANNEL_ERROR');
+        
+        // Retry if we haven't exceeded max attempts
+        if (retryCount < 3 && !retryTimeout) {
+          retryTimeout = setTimeout(() => {
+            console.log(`Retrying subscription after error (attempt ${retryCount + 2})...`);
+            retryTimeout = null;
+            setupSubscription(retryCount + 1);
+          }, 3000);
+        } else {
+          // Fallback to polling
+          if (!pollInterval) {
+            pollInterval = setInterval(() => {
+              console.log('Polling for updates (subscription setup failed)');
+              loadVoteResults();
+            }, 5000);
+          }
+        }
       }
-    })();
-  }, [id, role, loadVoteResults]);
+    };
+
+    // Set up subscription after a delay
+    const setupTimeout = setTimeout(() => {
+      setupSubscription();
+    }, 1000); // Additional 1 second delay after component is ready
+
+    // Cleanup function
+    return () => {
+      clearTimeout(setupTimeout);
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
+    };
+  }, [id, loading, loadVoteResults]); // Only run when loading is false
 
   if (loading) {
     return (

@@ -16,6 +16,7 @@ export default function PollDetailPage() {
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [voteMsg, setVoteMsg] = useState<string | null>(null);
   const [votedOptionId, setVotedOptionId] = useState<string | null>(null);
+  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [campaignLoading, setCampaignLoading] = useState(true);
 
@@ -179,9 +180,19 @@ export default function PollDetailPage() {
     }
   }
 
-  const castVote = async (optionId: string) => {
+  const selectCandidate = (optionId: string) => {
+    setSelectedOptionId(optionId);
     setVoteMsg(null);
-    setSubmitting(optionId);
+  };
+
+  const castVote = async () => {
+    if (!selectedOptionId) {
+      setVoteMsg("Please select a candidate first.");
+      return;
+    }
+    
+    setVoteMsg(null);
+    setSubmitting(selectedOptionId);
     try {
       if (votedOptionId) {
         setVoteMsg("You have already voted in this poll.");
@@ -191,14 +202,15 @@ export default function PollDetailPage() {
 
       const payload = {
         campaign_id: id,
-        option_id: optionId,
+        option_id: selectedOptionId,
         voter_id: voterId,
         created_at: new Date().toISOString(),
       } as const;
       const { error } = await supabase.from("votes_single").insert(payload);
       if (error) throw error;
-      setVoteMsg("Vote submitted.");
-      setVotedOptionId(optionId);
+      setVoteMsg("Vote submitted successfully!");
+      setVotedOptionId(selectedOptionId);
+      setSelectedOptionId(null);
       
       // Invalidate cache for this campaign's options (in case vote counts are displayed elsewhere)
       try {
@@ -243,53 +255,83 @@ export default function PollDetailPage() {
 
       {role === "student" ? (
         <div className="rounded-xl border border-border bg-card p-6">
-          <p className="text-sm text-muted-foreground mb-4">Choose an option</p>
-          <div className="space-y-2">
-            {loading ? (
-              <>
-                <div className="h-10 bg-muted animate-pulse rounded"></div>
-                <div className="h-10 bg-muted animate-pulse rounded"></div>
-                <div className="h-10 bg-muted animate-pulse rounded"></div>
-                <div className="h-10 bg-muted animate-pulse rounded"></div>
-              </>
-            ) : options.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No options available yet.</div>
-            ) : (
-              <>
-                {voteMsg && (
-                  <div className="text-xs text-muted-foreground">{voteMsg}</div>
-                )}
-                {votedOptionId
-                  ? options.map((o) => (
-                      <div
-                        key={o.id}
-                        className={`w-full text-left rounded-md px-4 py-2 text-sm border ${
-                          o.id === votedOptionId
-                            ? "bg-primary/15 border-primary/40"
-                            : "bg-card border-border"
-                        }`}
-                      >
-                        <div className="font-medium">
-                          {o.label} {o.id === votedOptionId && <span className="text-xs text-muted-foreground">(your vote)</span>}
-                        </div>
-                        {o.description && <div className="text-xs text-muted-foreground">{o.description}</div>}
+          {votedOptionId ? (
+            // Already voted - show results
+            <>
+              <p className="text-sm text-muted-foreground mb-4">Your vote has been submitted</p>
+              <div className="space-y-2">
+                {options.map((o) => (
+                  <div
+                    key={o.id}
+                    className={`w-full text-left rounded-md px-4 py-2 text-sm border ${
+                      o.id === votedOptionId
+                        ? "bg-primary/15 border-primary/40"
+                        : "bg-card border-border"
+                    }`}
+                  >
+                    <div className="font-medium">
+                      {o.label} {o.id === votedOptionId && <span className="text-xs text-muted-foreground">(your vote)</span>}
+                    </div>
+                    {o.description && <div className="text-xs text-muted-foreground">{o.description}</div>}
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            // Voting process
+            <>
+              <p className="text-sm text-muted-foreground mb-4">
+                {selectedOptionId ? "Confirm your selection" : "Choose a candidate"}
+              </p>
+              <div className="space-y-2">
+                {loading ? (
+                  <>
+                    <div className="h-10 bg-muted animate-pulse rounded"></div>
+                    <div className="h-10 bg-muted animate-pulse rounded"></div>
+                    <div className="h-10 bg-muted animate-pulse rounded"></div>
+                    <div className="h-10 bg-muted animate-pulse rounded"></div>
+                  </>
+                ) : options.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">No options available yet.</div>
+                ) : (
+                  <>
+                    {voteMsg && (
+                      <div className={`text-xs ${voteMsg.includes('successfully') ? 'text-green-600' : 'text-red-600'}`}>
+                        {voteMsg}
                       </div>
-                    ))
-                  : options.map((o) => (
+                    )}
+                    {options.map((o) => (
                       <button
                         key={o.id}
-                        disabled={submitting === o.id}
-                        onClick={() => castVote(o.id)}
-                        className="w-full text-left rounded-md bg-primary/10 hover:bg-primary/20 disabled:opacity-50 text-foreground px-4 py-2 text-sm"
+                        onClick={() => selectCandidate(o.id)}
+                        className={`w-full text-left rounded-md px-4 py-2 text-sm border transition-colors ${
+                          selectedOptionId === o.id
+                            ? "bg-primary/20 border-primary/60 ring-2 ring-primary/30"
+                            : "bg-card border-border hover:bg-muted/50"
+                        }`}
                       >
                         <div className="font-medium">{o.label}</div>
                         {o.description && <div className="text-xs text-muted-foreground">{o.description}</div>}
                       </button>
                     ))}
-              </>
+                  </>
+                )}
+              </div>
+              
+            </>
+          )}
+          
+          <div className="mt-4 flex justify-end gap-3">
+            {/* Submit button appears only when a candidate is selected */}
+            {selectedOptionId && (
+              <button
+                onClick={castVote}
+                disabled={submitting !== null}
+                className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? "Submitting..." : "Submit Vote"}
+              </button>
             )}
-          </div>
-          <div className="mt-4 flex justify-end">
             <button 
               className="rounded-md bg-secondary text-secondary-foreground px-4 py-2 text-sm"
               onClick={() => router.push("/polling-menu")}

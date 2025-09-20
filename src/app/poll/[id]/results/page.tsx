@@ -98,7 +98,7 @@ export default function PollResultsPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground px-6 py-8">
-      <h1 className="text-lg font-semibold mb-4">Current votes</h1>
+      <h1 className="text-2xl font-semibold mb-4">Current votes</h1>
       <div className="space-y-3 max-w-xl mx-auto">
         {rows.map((r) => {
           const pct = Math.round((r.count / total) * 100);

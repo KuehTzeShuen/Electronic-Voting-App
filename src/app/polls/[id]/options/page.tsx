@@ -1,5 +1,6 @@
 "use client";
 
+import { generateUUID } from "@/lib/uuid";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -72,7 +73,7 @@ export default function ManageOptionsPage() {
     try {
       if (role !== "admin") throw new Error("Only admins can add options");
       const payload = {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         campaign_id: campaignId,
         label: label.trim(),
         description: desc.trim() || null,
@@ -110,13 +111,14 @@ export default function ManageOptionsPage() {
     return (
       <div className="min-h-screen bg-background text-foreground px-6 py-8">
         <p className="text-sm text-muted-foreground">Only admins can manage options.</p>
-        <Button className="mt-4" onClick={() => router.push(`/poll/${campaignId}`)}>Back</Button>
+        <Button className="mt-4" onClick={() => router.push("/polling-menu")}>Back to polling menu</Button>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background text-foreground px-6 py-8">
+      <h1 className="text-foreground text-2xl font-semibold mb-6">Add Candidates</h1>
       <Card className="w-full max-w-xl mx-auto border-muted/40 bg-card/60 backdrop-blur">
         <CardHeader>
           <CardTitle className="text-sm text-muted-foreground">Manage options</CardTitle>
@@ -134,7 +136,7 @@ export default function ManageOptionsPage() {
             </div>
             <div className="flex gap-2">
               <Button type="submit" disabled={saving}>{saving ? "Adding..." : "Add option"}</Button>
-              <Button type="button" variant="secondary" onClick={() => router.push(`/poll/${campaignId}`)}>Back to poll</Button>
+              <Button type="button" variant="secondary" onClick={() => router.push("/polling-menu")}>Back to polling menu</Button>
             </div>
           </form>
 

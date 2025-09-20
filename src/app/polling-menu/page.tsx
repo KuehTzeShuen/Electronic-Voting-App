@@ -34,6 +34,8 @@ export default function OngoingPollsPage() {
   })();
   const [role, setRole] = useState<"student" | "admin" | null>(initialRole);
   const [roleLoading, setRoleLoading] = useState<boolean>(true);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profile, setProfile] = useState<{ email: string | null; first_name: string | null; last_name: string | null; student_id: string | null; role: string | null } | null>(null);
   // Admin add form moved to /polls/new; local inputs removed
 
   // const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
@@ -94,14 +96,39 @@ export default function OngoingPollsPage() {
   React.useEffect(() => {
     (async () => {
       try {
-        const { data: session } = await supabase.auth.getUser();
-        const email = session.user?.email;
-        if (!email) return;
-        const desired = initialRole;
-        const base = supabase.from("users").select("role").eq("email", email).limit(1);
-        const { data } = desired ? await base.eq("role", desired).maybeSingle() : await base.maybeSingle();
-        const resolved = (data?.role === "admin" || data?.role === "student") ? data.role : initialRole;
-        if (resolved) setRole(resolved);
+        // Check authentication using localStorage (same as login page)
+        let email: string | null = null;
+        let storedRole: string | null = null;
+        
+        try {
+          email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
+          storedRole = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
+        } catch (_) {
+          // localStorage not available
+        }
+        
+        if (!email || !storedRole) {
+          // No authentication data, redirect to login
+          router.push("/");
+          return;
+        }
+        
+        // Verify the user exists in the database
+        const { data, error: fetchError } = await supabase
+          .from("users")
+          .select("role")
+          .eq("email", email)
+          .eq("role", storedRole)
+          .maybeSingle();
+          
+        if (fetchError || !data) {
+          // User not found or error, redirect to login
+          router.push("/");
+          return;
+        }
+        
+        // Set the role from localStorage (which was validated against DB)
+        setRole(storedRole as "student" | "admin");
       } finally {
         setRoleLoading(false);
       }
@@ -132,17 +159,60 @@ export default function OngoingPollsPage() {
     router.push(`/poll/${id}`);
   };
 
-  // Load campaigns
+  // Load campaigns without caching
   React.useEffect(() => {
     (async () => {
+      // Fetch fresh data from database
       const { data } = await supabase
         .from("campaigns")
         .select("id, title, description, vote_type, starts_at, ends_at, is_published, club")
         .order("starts_at", { ascending: false })
         .limit(100);
-      if (Array.isArray(data)) setCampaigns(data as Campaign[]);
+      
+      if (Array.isArray(data)) {
+        setCampaigns(data as Campaign[]);
+      }
     })();
   }, []);
+
+  async function toggleProfile() {
+    const nextOpen = !profileOpen;
+    setProfileOpen(nextOpen);
+    if (nextOpen && !profile) {
+      // Get email from localStorage (same as authentication check)
+      let email: string | null = null;
+      try {
+        email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
+      } catch (_) {
+        // localStorage not available
+      }
+      let userRow: { first_name: string | null; last_name: string | null; student_id: string | null; role: string | null } | null = null;
+      if (email) {
+        const { data } = await supabase
+          .from("users")
+          .select("first_name, last_name, student_id, role")
+          .eq("email", email)
+          .limit(1)
+          .maybeSingle();
+        if (data) userRow = data as { first_name: string | null; last_name: string | null; student_id: string | null; role: string | null };
+      }
+      // Role should reflect the user's chosen session role only (not DB),
+      // so prefer localStorage appRole, falling back to current in-memory role.
+      let resolvedRole: string | null = null;
+      try {
+        const stored = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
+        if (stored === "admin" || stored === "student") resolvedRole = stored;
+      } catch {}
+      if (!resolvedRole) resolvedRole = role;
+      setProfile({
+        email,
+        first_name: userRow?.first_name ?? null,
+        last_name: userRow?.last_name ?? null,
+        student_id: userRow?.student_id ?? null,
+        role: resolvedRole,
+      });
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -171,10 +241,40 @@ export default function OngoingPollsPage() {
 
       <header className="w-full px-6 pt-8 pb-4 flex items-center justify-between relative z-10">
         <h1 className="text-foreground text-2xl font-semibold">Ongoing Polls</h1>
-        {!roleLoading && role === "admin" && (
-          <Button size="sm" onClick={() => router.push("/polls/new")}>Add poll</Button>
-        )}
+        <div className="flex items-center gap-2">
+          {!roleLoading && role === "admin" && (
+            <Button size="sm" onClick={() => router.push("/polls/new")}>Add poll</Button>
+          )}
+          <Button size="sm" variant="secondary" onClick={toggleProfile}>Profile</Button>
+        </div>
       </header>
+
+      {profileOpen && (
+        <>
+          <div className="fixed inset-0 z-[999] bg-black/40" onClick={toggleProfile} />
+          <div className="fixed right-6 top-20 z-[1000] w-64 rounded-md border border-border bg-card p-3 shadow-lg">
+            <div className="text-sm font-medium text-foreground mb-2">Profile</div>
+            <div className="text-xs text-muted-foreground space-y-1">
+              <div><span className="font-medium text-foreground">Email:</span> {profile?.email ?? "-"}</div>
+              <div><span className="font-medium text-foreground">Name:</span> {(profile?.first_name ?? "-") + " " + (profile?.last_name ?? "")}</div>
+              <div><span className="font-medium text-foreground">Student ID:</span> {profile?.student_id ?? "-"}</div>
+              <div><span className="font-medium text-foreground">Role:</span> {profile?.role ?? "-"}</div>
+            </div>
+            <div className="mt-3 flex justify-end gap-2">
+              <Button size="sm" variant="secondary" onClick={toggleProfile}>Close</Button>
+              <Button size="sm" variant="destructive" onClick={() => {
+                try {
+                  localStorage.removeItem("appEmail");
+                  localStorage.removeItem("appRole");
+                } catch (_) {
+                  // localStorage not available
+                }
+                router.push("/");
+              }}>Logout</Button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Admin add form moved to /polls/new */}
 
@@ -194,7 +294,7 @@ export default function OngoingPollsPage() {
               <div className="text-foreground text-lg font-semibold mt-1">{c.title}</div>
               {c.description && <div className="text-muted-foreground text-xs mt-1">{c.description}</div>}
               {role === "student" ? (
-                <div className="flex items-center gap-2 mt-3">
+                <div className="flex items-center gap-2 mt-4">
                   <Input
                     type="text"
                     placeholder="Enter code"
@@ -206,11 +306,11 @@ export default function OngoingPollsPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 mt-3">
+              <div className="flex items-center gap-2 mt-4">
                   <Button size="sm" variant="secondary" onClick={() => router.push(`/poll/${c.id}/results`)}>
                     View votes
                   </Button>
-                </div>
+              </div>
               )}
             </CardContent>
           </Card>

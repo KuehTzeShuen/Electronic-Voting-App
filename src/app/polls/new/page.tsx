@@ -1,5 +1,6 @@
 "use client";
 
+import { generateUUID } from "@/lib/uuid";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -63,8 +64,8 @@ export default function NewPollPage() {
         throw new Error("End time must be after start time");
       }
       // Create campaign record
-      const id = crypto.randomUUID();
-      const hostId = crypto.randomUUID();
+      const id = generateUUID();
+      const hostId = generateUUID();
       if (!code || code.trim().length === 0) {
         throw new Error("A poll access code is required");
       }
@@ -111,9 +112,10 @@ export default function NewPollPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground px-6 py-8">
+      <h1 className="text-foreground text-2xl font-semibold mb-6">Add New Poll</h1>
       <Card className="w-full max-w-xl mx-auto border-muted/40 bg-card/60 backdrop-blur">
         <CardHeader>
-          <CardTitle className="text-sm text-muted-foreground">Create a new poll</CardTitle>
+          <CardTitle className="text-sm text-muted-foreground">Configure the poll</CardTitle>
         </CardHeader>
         <CardContent>
           {error && <div className="mb-3 text-sm text-destructive">{error}</div>}
@@ -156,6 +158,7 @@ export default function NewPollPage() {
                   value={startsAt}
                   onChange={e => setStartsAt(e.target.value)}
                   required
+                  className="[&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
                 />
               </div>
               <div>
@@ -165,6 +168,7 @@ export default function NewPollPage() {
                   value={endsAt}
                   onChange={e => setEndsAt(e.target.value)}
                   required
+                  className="[&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
                 />
               </div>
             </div>

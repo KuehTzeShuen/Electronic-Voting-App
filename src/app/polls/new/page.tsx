@@ -95,8 +95,53 @@ export default function NewPollPage() {
   if (roleLoading) {
     return (
       <div className="min-h-screen bg-background text-foreground px-6 py-8">
-        <div className="h-20 rounded-xl bg-muted animate-pulse mb-3" />
-        <div className="h-20 rounded-xl bg-muted animate-pulse mb-3" />
+        <h1 className="text-foreground text-2xl font-semibold mb-6">Add New Poll</h1>
+        <Card className="w-full max-w-xl mx-auto border-muted/40 bg-card/60 backdrop-blur">
+          <CardHeader>
+            <div className="h-4 w-32 bg-muted animate-pulse rounded"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-4">
+              {/* Form fields skeleton */}
+              <div className="space-y-2">
+                <div className="h-3 w-12 bg-muted animate-pulse rounded"></div>
+                <div className="h-10 bg-muted animate-pulse rounded"></div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-16 bg-muted animate-pulse rounded"></div>
+                <div className="h-10 bg-muted animate-pulse rounded"></div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-24 bg-muted animate-pulse rounded"></div>
+                <div className="h-10 bg-muted animate-pulse rounded"></div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-12 bg-muted animate-pulse rounded"></div>
+                <div className="h-10 bg-muted animate-pulse rounded"></div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-20 bg-muted animate-pulse rounded"></div>
+                <div className="h-10 bg-muted animate-pulse rounded"></div>
+              </div>
+              {/* Date inputs skeleton */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="h-3 w-16 bg-muted animate-pulse rounded"></div>
+                  <div className="h-10 bg-muted animate-pulse rounded"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 w-16 bg-muted animate-pulse rounded"></div>
+                  <div className="h-10 bg-muted animate-pulse rounded"></div>
+                </div>
+              </div>
+              {/* Buttons skeleton */}
+              <div className="flex gap-2">
+                <div className="h-10 w-24 bg-muted animate-pulse rounded"></div>
+                <div className="h-10 w-20 bg-muted animate-pulse rounded"></div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

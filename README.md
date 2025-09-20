@@ -1,4 +1,6 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Votely - Electronic Voting Application
+
+This is a [Next.js](https://nextjs.org) project for electronic voting functionality.
 
 ## Getting Started
 

@@ -103,7 +103,7 @@ export default function OngoingPollsPage() {
         try {
           email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
           storedRole = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
-        } catch (e) {
+        } catch (_) {
           // localStorage not available
         }
         
@@ -183,7 +183,7 @@ export default function OngoingPollsPage() {
       let email: string | null = null;
       try {
         email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
-      } catch (e) {
+      } catch (_) {
         // localStorage not available
       }
       let userRow: { first_name: string | null; last_name: string | null; student_id: string | null; role: string | null } | null = null;
@@ -194,7 +194,7 @@ export default function OngoingPollsPage() {
           .eq("email", email)
           .limit(1)
           .maybeSingle();
-        if (data) userRow = data as any;
+        if (data) userRow = data as { first_name: string | null; last_name: string | null; student_id: string | null; role: string | null };
       }
       // Role should reflect the user's chosen session role only (not DB),
       // so prefer localStorage appRole, falling back to current in-memory role.
@@ -266,7 +266,7 @@ export default function OngoingPollsPage() {
                 try {
                   localStorage.removeItem("appEmail");
                   localStorage.removeItem("appRole");
-                } catch (e) {
+                } catch (_) {
                   // localStorage not available
                 }
                 router.push("/");

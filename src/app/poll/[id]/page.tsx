@@ -36,7 +36,7 @@ export default function PollDetailPage() {
             return; // Use cached data
           }
         }
-      } catch (e) {
+      } catch (_) {
         // Cache invalid, continue to fetch
       }
 
@@ -56,7 +56,7 @@ export default function PollDetailPage() {
             data: campaignData,
             timestamp: Date.now()
           }));
-        } catch (e) {
+        } catch (_) {
           // Cache failed, but data is still loaded
         }
       }
@@ -74,7 +74,7 @@ export default function PollDetailPage() {
       try {
         email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
         storedRole = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
-      } catch (e) {
+      } catch (_) {
         // localStorage not available
       }
       
@@ -120,7 +120,7 @@ export default function PollDetailPage() {
           // No cache, fetch fresh data
           await fetchAndCacheOptions();
         }
-      } catch (e) {
+      } catch (_) {
         // Cache invalid, fetch fresh data
         await fetchAndCacheOptions();
       }
@@ -141,7 +141,7 @@ export default function PollDetailPage() {
               data: optionsData,
               timestamp: Date.now()
             }));
-          } catch (e) {
+          } catch (_) {
             // Cache failed, but data is still loaded
           }
         }
@@ -158,7 +158,7 @@ export default function PollDetailPage() {
       if (existing?.option_id) setVotedOptionId(existing.option_id as string);
       setLoading(false);
     })();
-  }, [id]);
+  }, [id, router]);
 
   async function getVoterId(): Promise<string> {
     // Prefer Supabase auth user id when available
@@ -203,7 +203,7 @@ export default function PollDetailPage() {
       // Invalidate cache for this campaign's options (in case vote counts are displayed elsewhere)
       try {
         localStorage.removeItem(`options-${id}`);
-      } catch (e) {
+      } catch (_) {
         // Cache invalidation failed, but vote was successful
       }
     } catch (e) {

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 type Row = { option_id: string; count: number; label: string };
 
@@ -94,7 +95,7 @@ export default function PollResultsPage() {
   useEffect(() => {
     if (loading || !id) return; // Don't set up subscription until initial load is complete
 
-    let subscription: any = null;
+    let subscription: RealtimeChannel | null = null;
     let pollInterval: NodeJS.Timeout | null = null;
     let retryTimeout: NodeJS.Timeout | null = null;
 
@@ -236,8 +237,42 @@ export default function PollResultsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background text-foreground px-6 py-8">
-        <div className="h-20 rounded-xl bg-muted animate-pulse mb-3" />
-        <div className="h-20 rounded-xl bg-muted animate-pulse" />
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-32 bg-muted animate-pulse rounded"></div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-muted animate-pulse"></div>
+              <div className="h-3 w-16 bg-muted animate-pulse rounded"></div>
+            </div>
+          </div>
+          <div className="h-6 w-16 bg-muted animate-pulse rounded"></div>
+        </div>
+        
+        {/* Last updated skeleton */}
+        <div className="h-3 w-32 bg-muted animate-pulse rounded mb-4"></div>
+        
+        {/* Results skeleton */}
+        <div className="space-y-3 max-w-xl mx-auto">
+          {Array.from({ length: Math.max(rows.length, 4) }).map((_, index) => {
+            const widths = ['w-24', 'w-20', 'w-28', 'w-24'];
+            const percentages = [20, 40, 60, 80];
+            return (
+              <div key={index} className="w-full">
+                <div className="flex justify-between text-sm mb-1">
+                  <div className={`h-4 bg-muted animate-pulse rounded ${widths[index % 4]}`}></div>
+                  <div className="h-4 w-12 bg-muted animate-pulse rounded"></div>
+                </div>
+                <div className="h-2 w-full rounded bg-muted overflow-hidden">
+                  <div 
+                    className="h-2 bg-muted animate-pulse" 
+                    style={{ width: `${percentages[index % 4]}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   }

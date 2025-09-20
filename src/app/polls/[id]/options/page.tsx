@@ -101,8 +101,41 @@ export default function ManageOptionsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background text-foreground px-6 py-8">
-        <div className="h-20 rounded-xl bg-muted animate-pulse mb-3" />
-        <div className="h-20 rounded-xl bg-muted animate-pulse" />
+        <h1 className="text-foreground text-2xl font-semibold mb-6">Add Candidates</h1>
+        <Card className="w-full max-w-xl mx-auto border-muted/40 bg-card/60 backdrop-blur">
+          <CardHeader>
+            <div className="h-4 w-24 bg-muted animate-pulse rounded"></div>
+          </CardHeader>
+          <CardContent>
+            {/* Form skeleton */}
+            <div className="flex flex-col gap-3 mb-6">
+              <div className="space-y-2">
+                <div className="h-3 w-12 bg-muted animate-pulse rounded"></div>
+                <div className="h-10 bg-muted animate-pulse rounded"></div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-20 bg-muted animate-pulse rounded"></div>
+                <div className="h-10 bg-muted animate-pulse rounded"></div>
+              </div>
+              <div className="flex gap-2">
+                <div className="h-10 w-24 bg-muted animate-pulse rounded"></div>
+                <div className="h-10 w-32 bg-muted animate-pulse rounded"></div>
+              </div>
+            </div>
+
+            {/* Existing options list skeleton */}
+            <div className="space-y-2">
+              {Array.from({ length: options.length > 0 ? options.length : 2 }).map((_, index) => (
+                <div key={index} className="rounded-md border border-border px-3 py-2">
+                  <div className={`h-4 bg-muted animate-pulse rounded mb-1 ${index % 3 === 0 ? 'w-24' : index % 3 === 1 ? 'w-20' : 'w-28'}`}></div>
+                  {index % 2 === 0 && (
+                    <div className={`h-3 bg-muted animate-pulse rounded ${index % 4 === 0 ? 'w-32' : 'w-28'}`}></div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

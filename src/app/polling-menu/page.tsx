@@ -34,6 +34,7 @@ export default function OngoingPollsPage() {
   })();
   const [role, setRole] = useState<"student" | "admin" | null>(initialRole);
   const [roleLoading, setRoleLoading] = useState<boolean>(true);
+  const [campaignsLoading, setCampaignsLoading] = useState<boolean>(true);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profile, setProfile] = useState<{ email: string | null; first_name: string | null; last_name: string | null; student_id: string | null; role: string | null } | null>(null);
   // Admin add form moved to /polls/new; local inputs removed
@@ -162,15 +163,20 @@ export default function OngoingPollsPage() {
   // Load campaigns without caching
   React.useEffect(() => {
     (async () => {
-      // Fetch fresh data from database
-      const { data } = await supabase
-        .from("campaigns")
-        .select("id, title, description, vote_type, starts_at, ends_at, is_published, club")
-        .order("starts_at", { ascending: false })
-        .limit(100);
-      
-      if (Array.isArray(data)) {
-        setCampaigns(data as Campaign[]);
+      setCampaignsLoading(true);
+      try {
+        // Fetch fresh data from database
+        const { data } = await supabase
+          .from("campaigns")
+          .select("id, title, description, vote_type, starts_at, ends_at, is_published, club")
+          .order("starts_at", { ascending: false })
+          .limit(100);
+        
+        if (Array.isArray(data)) {
+          setCampaigns(data as Campaign[]);
+        }
+      } finally {
+        setCampaignsLoading(false);
       }
     })();
   }, []);
@@ -279,14 +285,14 @@ export default function OngoingPollsPage() {
       {/* Admin add form moved to /polls/new */}
 
       <main className="w-full px-4 pt-6 pb-10 space-y-4 relative z-10">
-        {roleLoading && (
+        {(roleLoading || campaignsLoading) && (
           <div className="w-full max-w-2xl mx-auto">
-            <div className="h-20 rounded-xl bg-muted animate-pulse mb-3" />
-            <div className="h-20 rounded-xl bg-muted animate-pulse mb-3" />
-            <div className="h-20 rounded-xl bg-muted animate-pulse" />
+            {Array.from({ length: campaigns.length > 0 ? campaigns.length : 3 }).map((_, index) => (
+              <div key={index} className="h-32 rounded-xl bg-muted animate-pulse mb-3" />
+            ))}
           </div>
         )}
-        {!roleLoading && campaigns.map((c) => (
+        {!roleLoading && !campaignsLoading && campaigns.map((c) => (
           <Card key={c.id} className="w-full max-w-2xl mx-auto border-muted/40 bg-card/60 backdrop-blur">
             <CardHeader className="pb-0"></CardHeader>
             <CardContent>

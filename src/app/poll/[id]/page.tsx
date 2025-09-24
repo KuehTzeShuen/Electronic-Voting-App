@@ -19,6 +19,7 @@ export default function PollDetailPage() {
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [campaignLoading, setCampaignLoading] = useState(true);
+  const [showReward, setShowReward] = useState(false);
 
   // Load campaign details immediately with caching
   useEffect(() => {
@@ -211,15 +212,16 @@ export default function PollDetailPage() {
       setVoteMsg("Vote submitted successfully!");
       setVotedOptionId(selectedOptionId);
       setSelectedOptionId(null);
-      
-      // Invalidate cache for this campaign's options (in case vote counts are displayed elsewhere)
+      setShowReward(true); 
+
       try {
         localStorage.removeItem(`options-${id}`);
-      } catch (_) {
-        // Cache invalidation failed, but vote was successful
-      }
+      } catch (_) {}
     } catch (e) {
-      const msg = e && typeof e === 'object' && 'message' in e ? String((e as { message?: unknown }).message) : 'Failed to submit vote';
+      const msg =
+        e && typeof e === "object" && "message" in e
+          ? String((e as { message?: unknown }).message)
+          : "Failed to submit vote";
       setVoteMsg(msg);
     } finally {
       setSubmitting(null);
@@ -330,6 +332,14 @@ export default function PollDetailPage() {
                 className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? "Submitting..." : "Submit Vote"}
+              </button>
+            )}
+            {showReward && (
+              <button
+                onClick={() => router.push(`/poll/${id}/incentive`)}
+                className="rounded-md bg-green-600 text-white px-4 py-2 text-sm hover:bg-green-700"
+              >
+                Get your reward
               </button>
             )}
             <button 

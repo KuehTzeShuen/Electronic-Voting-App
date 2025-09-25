@@ -22,6 +22,18 @@ export default function NewPollPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // const [votingType, setVotingType] = useState<"single" | "preferential">(
+  //   (typeof window !== "undefined" && (localStorage.getItem("votingType") as "single" | "preferential")) || "single"
+  // );
+
+  // useEffect(() => {
+  //   if (votingType) {
+  //     localStorage.setItem("votingType", votingType);
+  //   }
+  // }, [votingType]);
+
+  
+
   useEffect(() => {
     (async () => {
       try {

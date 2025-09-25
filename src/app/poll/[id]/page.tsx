@@ -11,7 +11,7 @@ export default function PollDetailPage() {
   const id = Array.isArray(params?.id) ? params?.id[0] : (params?.id as string);
   const [role, setRole] = useState<"student" | "admin">("student");
   const [options, setOptions] = useState<{ id: string; label: string; description: string | null }[]>([]);
-  const [campaign, setCampaign] = useState<{ title: string; description: string | null; club: string | null; starts_at: string | null; ends_at: string | null } | null>(null);
+  const [campaign, setCampaign] = useState<{ title: string; description: string | null; club: string | null; starts_at: string | null; ends_at: string | null; vote_type?: "single" | "preferential"; } | null>(null);
   const router = useRouter();
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [voteMsg, setVoteMsg] = useState<string | null>(null);
@@ -19,6 +19,9 @@ export default function PollDetailPage() {
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [campaignLoading, setCampaignLoading] = useState(true);
+
+  const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
+
 
   // Load campaign details immediately with caching
   useEffect(() => {
@@ -44,7 +47,7 @@ export default function PollDetailPage() {
       // Fetch fresh data
       const { data: camp } = await supabase
         .from("campaigns")
-        .select("title, description, club, starts_at, ends_at")
+        .select("title, description, club, starts_at, ends_at, vote_type")
         .eq("id", id)
         .maybeSingle();
       
@@ -185,41 +188,70 @@ export default function PollDetailPage() {
     setVoteMsg(null);
   };
 
+  const toggleCandidate = (optionId: string) => {
+    setVoteMsg(null);
+    if (campaign?.vote_type === "preferential") {
+      setSelectedOptionIds((prev) =>
+        prev.includes(optionId) ? prev.filter((id) => id !== optionId) : [...prev, optionId]
+      );
+    } else {
+      setSelectedOptionIds([optionId]);
+    }
+  };
+
   const castVote = async () => {
-    if (!selectedOptionId) {
-      setVoteMsg("Please select a candidate first.");
+    if (selectedOptionIds.length === 0) {
+      setVoteMsg("Please select at least one candidate.");
       return;
     }
-    
+
     setVoteMsg(null);
-    setSubmitting(selectedOptionId);
+    setSubmitting("yes");
+
     try {
       if (votedOptionId) {
         setVoteMsg("You have already voted in this poll.");
         return;
       }
+
       const voterId = await getVoterId();
 
-      const payload = {
-        campaign_id: id,
-        option_id: selectedOptionId,
-        voter_id: voterId,
-        created_at: new Date().toISOString(),
-      } as const;
-      const { error } = await supabase.from("votes_single").insert(payload);
-      if (error) throw error;
+      if (campaign?.vote_type === "single") {
+        // Single vote
+        const payload = {
+          campaign_id: id,
+          option_id: selectedOptionIds[0],
+          voter_id: voterId,
+          created_at: new Date().toISOString(),
+        };
+        const { error } = await supabase.from("votes_single").insert(payload);
+        if (error) throw error;
+        setVotedOptionId(selectedOptionIds[0]);
+      } else {
+        // Preferential voting - insert multiple rows with rank
+        const payloads = selectedOptionIds.map((optId, i) => ({
+          campaign_id: id,
+          option_id: optId,
+          voter_id: voterId,
+          rank: i + 1, // order of selection
+          created_at: new Date().toISOString(),
+        }));
+        const { error } = await supabase.from("votes_preferential").insert(payloads);
+        if (error) throw error;
+        setVotedOptionId("done"); // marker that vote is done
+      }
+
       setVoteMsg("Vote submitted successfully!");
-      setVotedOptionId(selectedOptionId);
-      setSelectedOptionId(null);
-      
-      // Invalidate cache for this campaign's options (in case vote counts are displayed elsewhere)
+      setSelectedOptionIds([]);
+
       try {
         localStorage.removeItem(`options-${id}`);
-      } catch (_) {
-        // Cache invalidation failed, but vote was successful
-      }
+      } catch {}
     } catch (e) {
-      const msg = e && typeof e === 'object' && 'message' in e ? String((e as { message?: unknown }).message) : 'Failed to submit vote';
+      const msg =
+        e && typeof e === "object" && "message" in e
+          ? String((e as { message?: unknown }).message)
+          : "Failed to submit vote";
       setVoteMsg(msg);
     } finally {
       setSubmitting(null);
@@ -303,9 +335,9 @@ export default function PollDetailPage() {
                     {options.map((o) => (
                       <button
                         key={o.id}
-                        onClick={() => selectCandidate(o.id)}
+                        onClick={() => toggleCandidate(o.id)}
                         className={`w-full text-left rounded-md px-4 py-2 text-sm border transition-colors ${
-                          selectedOptionId === o.id
+                          selectedOptionIds.includes(o.id)
                             ? "bg-primary/20 border-primary/60 ring-2 ring-primary/30"
                             : "bg-card border-border hover:bg-muted/50"
                         }`}
@@ -323,15 +355,16 @@ export default function PollDetailPage() {
           
           <div className="mt-4 flex justify-end gap-3">
             {/* Submit button appears only when a candidate is selected */}
-            {selectedOptionId && (
+            {selectedOptionIds.length > 0 && (
               <button
                 onClick={castVote}
                 disabled={submitting !== null}
                 className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? "Submitting..." : "Submit Vote"}
+                {submitting ? "Submitting..." : campaign?.vote_type === "preferential" ? "Submit Preferences" : "Submit Vote"}
               </button>
             )}
+
             <button 
               className="rounded-md bg-secondary text-secondary-foreground px-4 py-2 text-sm"
               onClick={() => router.push("/polling-menu")}

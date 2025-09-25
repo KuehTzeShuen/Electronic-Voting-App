@@ -316,6 +316,9 @@ export default function OngoingPollsPage() {
                   <Button size="sm" variant="secondary" onClick={() => router.push(`/poll/${c.id}/results`)}>
                     View votes
                   </Button>
+                  <Button size="sm" variant="secondary" onClick={() => router.push(`/poll/${c.id}/summary`)}>
+                    View Summary
+                  </Button>
               </div>
               )}
             </CardContent>

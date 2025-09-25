@@ -38,7 +38,7 @@ export default function PollDetailPage() {
             return; // Use cached data
           }
         }
-      } catch (_) {
+      } catch {
         // Cache invalid, continue to fetch
       }
 
@@ -58,7 +58,7 @@ export default function PollDetailPage() {
             data: campaignData,
             timestamp: Date.now()
           }));
-        } catch (_) {
+        } catch {
           // Cache failed, but data is still loaded
         }
       }
@@ -76,7 +76,7 @@ export default function PollDetailPage() {
       try {
         email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
         storedRole = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
-      } catch (_) {
+      } catch {
         // localStorage not available
       }
       
@@ -122,7 +122,7 @@ export default function PollDetailPage() {
           // No cache, fetch fresh data
           await fetchAndCacheOptions();
         }
-      } catch (_) {
+      } catch {
         // Cache invalid, fetch fresh data
         await fetchAndCacheOptions();
       }
@@ -143,7 +143,7 @@ export default function PollDetailPage() {
               data: optionsData,
               timestamp: Date.now()
             }));
-          } catch (_) {
+          } catch {
             // Cache failed, but data is still loaded
           }
         }
@@ -216,7 +216,9 @@ export default function PollDetailPage() {
 
       try {
         localStorage.removeItem(`options-${id}`);
-      } catch (_) {}
+      } catch {
+        // Ignore cache removal errors
+      }
     } catch (e) {
       const msg =
         e && typeof e === "object" && "message" in e

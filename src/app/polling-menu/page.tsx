@@ -104,7 +104,7 @@ export default function OngoingPollsPage() {
         try {
           email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
           storedRole = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
-        } catch (_) {
+        } catch {
           // localStorage not available
         }
         
@@ -189,7 +189,7 @@ export default function OngoingPollsPage() {
       let email: string | null = null;
       try {
         email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
-      } catch (_) {
+      } catch {
         // localStorage not available
       }
       let userRow: { first_name: string | null; last_name: string | null; student_id: string | null; role: string | null } | null = null;
@@ -272,7 +272,7 @@ export default function OngoingPollsPage() {
                 try {
                   localStorage.removeItem("appEmail");
                   localStorage.removeItem("appRole");
-                } catch (_) {
+                } catch {
                   // localStorage not available
                 }
                 router.push("/");

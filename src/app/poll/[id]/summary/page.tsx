@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import {
@@ -10,9 +10,7 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  LabelList,
   Cell,
-  Legend,
   PieChart,
   Pie,
 } from "recharts";
@@ -67,7 +65,7 @@ export default function SummaryDatasetOnly() {
           .eq("campaign_id", id);
         if (votesErr) throw votesErr;
 
-        const votes = (voteRows ?? []).map((v: any) => ({
+        const votes = (voteRows ?? []).map((v: { option_id: string; voter_id: string; created_at: string | null }) => ({
           option_id: String(v.option_id),
           voter_id: String(v.voter_id),
           created_at: v.created_at ? String(v.created_at) : null,
@@ -87,7 +85,7 @@ export default function SummaryDatasetOnly() {
         if (optErr) throw optErr;
 
         const labelByOptionId = new Map<string, string | null>(
-          (optRows ?? []).map((o: any) => [String(o.id), o.label ?? null])
+          (optRows ?? []).map((o: { id: string; label: string | null }) => [String(o.id), o.label ?? null])
         );
 
         // 3) demographics for these voters
@@ -102,7 +100,7 @@ export default function SummaryDatasetOnly() {
           string,
           { discipline: string | null; gender: string | null; location: string | null; ug_pg: string | null; }
         >(
-          (userRows ?? []).map((u: any) => [
+          (userRows ?? []).map((u: { auth_id: string; discipline: string | null; gender: string | null; location: string | null; ug_pg: string | null }) => [
             String(u.auth_id),
             {
               discipline: u.discipline ?? null,
@@ -129,8 +127,8 @@ export default function SummaryDatasetOnly() {
         });
 
         if (!cancelled) setDataset(out);
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || "Failed to load dataset");
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load dataset");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -163,18 +161,19 @@ export default function SummaryDatasetOnly() {
   }, [countsByOption, maxCnt]);
 
   // ----- Location helpers -----
-  const locationMap: Record<string, string> = {
+  const locationMap = useMemo((): Record<string, string> => ({
     "1": "Clayton",
     "2": "Caulfield",
     "3": "Peninsula",
     "4": "Parkville",
     "5": "Malaysia",
     "6": "Other",
-  };
-  const normLocation = (val?: number | string | null) => {
+  }), []);
+  
+  const normLocation = useCallback((val?: number | string | null) => {
     if (val == null || val === "" || val === "NA") return "NA";
     return locationMap[String(val)] ?? "Other";
-  };
+  }, [locationMap]);
   const locationColors: Record<string, string> = {
     Clayton: "#60a5fa",
     Caulfield: "#34d399",
@@ -223,11 +222,11 @@ export default function SummaryDatasetOnly() {
       m.set(loc, (m.get(loc) ?? 0) + 1);
     }
     return Array.from(m.entries()).map(([location, cnt]) => ({ location, cnt }));
-  }, [dataset, selectedOptions]);
+  }, [dataset, selectedOptions, normLocation]);
 
   // ---- CSV helpers ----
-  function toCsv(rows: any[], columns: { key: string; header: string }[]) {
-    const escape = (val: any) => {
+  function toCsv(rows: Record<string, unknown>[], columns: { key: string; header: string }[]) {
+    const escape = (val: unknown) => {
       const s = val == null ? "" : String(val);
       return `"${s.replace(/"/g, '""')}"`;
     };
@@ -237,7 +236,7 @@ export default function SummaryDatasetOnly() {
   }
   
   // ----- Discipline helpers -----
-  const disciplineMap: Record<string, string> = {
+  const disciplineMap = useMemo((): Record<string, string> => ({
     "1": "Arts, Design and Architecture",
     "2": "Arts",
     "3": "Business and Economics",
@@ -248,12 +247,12 @@ export default function SummaryDatasetOnly() {
     "8": "Medicine, Nursing and Health Sciences",
     "9": "Pharmacy and Pharmaceutical Sciences",
     "10": "Science",
-  };
+  }), []);
 
-  const normDiscipline = (val?: number | string | null) => {
+  const normDiscipline = useCallback((val?: number | string | null) => {
     if (val == null || val === "" || val === "NA") return "NA";
     return disciplineMap[String(val)] ?? "NA";
-  };
+  }, [disciplineMap]);
 
   // A readable palette for disciplines (+ NA)
   const disciplineColors: Record<string, string> = {
@@ -292,7 +291,7 @@ export default function SummaryDatasetOnly() {
       return ia - ib;
     });
     return rows;
-  }, [dataset, selectedOptions]);
+  }, [dataset, selectedOptions, disciplineMap, normDiscipline]);
 
   const totalByDiscipline = useMemo(
   () => overallDisciplineFiltered.reduce((s, d) => s + d.cnt, 0),
@@ -330,11 +329,6 @@ export default function SummaryDatasetOnly() {
     ];
   }, [filteredDataset]);
 
-  const genderPieTotal = useMemo(
-    () => genderPieData.reduce((s, d) => s + d.value, 0),
-    [genderPieData]
-  );
-
   const genderPieColors: Record<string, string> = {
     Female: "#f472b6",   // pink
     Male: "#60a5fa",     // blue
@@ -358,11 +352,6 @@ export default function SummaryDatasetOnly() {
     ];
   }, [filteredDataset]);
 
-  const ugpgPieTotal = useMemo(
-    () => ugpgPieData.reduce((s, d) => s + d.value, 0),
-    [ugpgPieData]
-  );
-
   const ugpgPieColors: Record<string, string> = {
     UG: "#34d399", // green
     PG: "#a78bfa", // purple
@@ -380,7 +369,7 @@ export default function SummaryDatasetOnly() {
     URL.revokeObjectURL(url);
   }
 
-  const CustomTooltip = ({ active, payload, label, total }: any) => {
+  const CustomTooltip = ({ active, payload, label, total }: { active?: boolean; payload?: Array<{ value: number }>; label?: string; total?: number }) => {
     if (!active || !payload || !payload.length) return null;
 
     const value = Number(payload[0].value) || 0;
@@ -579,9 +568,11 @@ export default function SummaryDatasetOnly() {
                 innerRadius={50}
                 outerRadius={90}
                 isAnimationActive={false}
-                 label={({ name, percent, value }: any) =>
-                          value > 0 ? `${name} ${value} (${(percent * 100).toFixed(0)}%)` : ""
-                        }
+                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 label={(props: any) => {
+                          const { name, percent, value } = props;
+                          return value > 0 ? `${name} ${value} (${(percent * 100).toFixed(0)}%)` : "";
+                        }}
                 labelLine={false}
               >
                 {genderPieData.map((d, i) => (
@@ -606,9 +597,11 @@ export default function SummaryDatasetOnly() {
                 innerRadius={50}
                 outerRadius={90}
                 isAnimationActive={false}
-                 label={({ name, percent, value }: any) =>
-                          value > 0 ? `${name} ${value} (${(percent * 100).toFixed(0)}%)` : ""
-                        }
+                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 label={(props: any) => {
+                          const { name, percent, value } = props;
+                          return value > 0 ? `${name} ${value} (${(percent * 100).toFixed(0)}%)` : "";
+                        }}
                 labelLine={false}
               >
                 {ugpgPieData.map((d, i) => (

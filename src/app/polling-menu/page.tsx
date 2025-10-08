@@ -116,7 +116,7 @@ export default function OngoingPollsPage() {
         try {
           email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
           storedRole = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
-        } catch (_) {
+        } catch {
           // localStorage not available
         }
         
@@ -327,7 +327,7 @@ export default function OngoingPollsPage() {
                 try {
                   localStorage.removeItem("appEmail");
                   localStorage.removeItem("appRole");
-                } catch (_) {
+                } catch {
                   // localStorage not available
                 }
                 router.push("/");
@@ -370,6 +370,9 @@ export default function OngoingPollsPage() {
               <div className="flex items-center gap-2 mt-4">
                   <Button size="sm" variant="secondary" onClick={() => router.push(`/poll/${c.id}/results`)}>
                     View votes
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => router.push(`/poll/${c.id}/summary`)}>
+                    View Summary
                   </Button>
               </div>
               )}

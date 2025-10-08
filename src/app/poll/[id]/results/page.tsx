@@ -25,6 +25,7 @@ export default function PollResultsPage() {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<string>('Connecting...');
+  const [voteType, setVoteType] = useState<'single' | 'preferential' | null>(null);
 
   // Function to load and update vote results
   const loadVoteResults = useCallback(async () => {
@@ -34,22 +35,66 @@ export default function PollResultsPage() {
         .from("campaign_options")
         .select("id, label")
         .eq("campaign_id", id);
-      const { data: votes } = await supabase
-        .from("votes_single")
-        .select("option_id")
-        .eq("campaign_id", id);
+      
+      // Get campaign vote type to determine which table to query
+      const { data: campaign } = await supabase
+        .from("campaigns")
+        .select("vote_type")
+        .eq("id", id)
+        .single();
+      
+      setVoteType(campaign?.vote_type || 'single');
+      
       const labelById = new Map<string, string>(
         ((opts || []) as Array<{ id: string; label: string }>).map((o) => [o.id, o.label])
       );
-      const counts = new Map<string, number>();
-      ((votes || []) as Array<{ option_id: string }>).forEach((v) => {
-        counts.set(v.option_id, (counts.get(v.option_id) || 0) + 1);
-      });
-      const rows: Row[] = Array.from(labelById.entries()).map(([option_id, label]) => ({
-        option_id,
-        label,
-        count: counts.get(option_id) || 0,
-      }));
+      
+      let rows: Row[] = [];
+      
+      if (campaign?.vote_type === "preferential") {
+        // Handle preferential voting with weighted scoring
+        const { data: votes } = await supabase
+          .from("votes_preferential")
+          .select("option_id, rank")
+          .eq("campaign_id", id);
+        
+        const scores = new Map<string, number>();
+        
+        // Calculate weighted scores based on number of options
+        const numOptions = opts?.length || 1; // Default to 1 if no options found
+        
+        // Calculate weighted scores (higher rank = higher score)
+        ((votes || []) as Array<{ option_id: string; rank: number }>).forEach((v) => {
+          const currentScore = scores.get(v.option_id) || 0;
+          // Points based on number of options: rank 1 gets numOptions points, rank 2 gets numOptions-1 points, etc.
+          const points = Math.max(1, numOptions - v.rank + 1);
+          scores.set(v.option_id, currentScore + points);
+        });
+        
+        rows = Array.from(labelById.entries()).map(([option_id, label]) => ({
+          option_id,
+          label,
+          count: scores.get(option_id) || 0,
+        }));
+      } else {
+        // Handle single voting (original logic)
+        const { data: votes } = await supabase
+          .from("votes_single")
+          .select("option_id")
+          .eq("campaign_id", id);
+        
+        const counts = new Map<string, number>();
+        ((votes || []) as Array<{ option_id: string }>).forEach((v) => {
+          counts.set(v.option_id, (counts.get(v.option_id) || 0) + 1);
+        });
+        
+        rows = Array.from(labelById.entries()).map(([option_id, label]) => ({
+          option_id,
+          label,
+          count: counts.get(option_id) || 0,
+        }));
+      }
+      
       setRows(rows);
       setLastUpdated(new Date());
       console.log('Vote results updated:', rows);
@@ -137,7 +182,21 @@ export default function PollResultsPage() {
               filter: `campaign_id=eq.${id}`
             },
             (payload) => {
-              console.log('Vote change detected:', payload);
+              console.log('Vote change detected (single):', payload);
+              // Reload results when votes change
+              loadVoteResults();
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: '*', // Listen to all changes (INSERT, UPDATE, DELETE)
+              schema: 'public',
+              table: 'votes_preferential',
+              filter: `campaign_id=eq.${id}`
+            },
+            (payload) => {
+              console.log('Vote change detected (preferential):', payload);
               // Reload results when votes change
               loadVoteResults();
             }
@@ -295,6 +354,11 @@ export default function PollResultsPage() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-semibold">Live Results</h1>
+          {voteType && (
+            <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded">
+              {voteType === 'preferential' ? 'Preferential Voting' : 'Single Voting'}
+            </span>
+          )}
           <div className="flex items-center gap-1">
             <div className={`w-2 h-2 rounded-full ${
               subscriptionStatus === 'SUBSCRIBED' ? 'bg-green-500 animate-pulse' : 
@@ -323,11 +387,14 @@ export default function PollResultsPage() {
       <div className="space-y-3 max-w-xl mx-auto">
         {rows.map((r) => {
           const pct = Math.round((r.count / total) * 100);
+          const displayLabel = voteType === 'preferential' ? 'points' : 'votes';
           return (
             <div key={r.option_id} className="w-full">
               <div className="flex justify-between text-sm mb-1">
                 <span className="font-medium">{r.label}</span>
-                <span className="text-muted-foreground">{r.count} ({pct}%)</span>
+                <span className="text-muted-foreground">
+                  {r.count} {displayLabel} ({pct}%)
+                </span>
               </div>
               <div className="h-2 w-full rounded bg-muted overflow-hidden">
                 <div className="h-2 bg-primary" style={{ width: `${pct}%` }} />

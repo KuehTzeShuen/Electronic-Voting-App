@@ -431,15 +431,29 @@ export default function PollDetailPage() {
                         : "bg-card border-border hover:bg-muted/50"
                     } ${votedOptionId !== null ? 'cursor-not-allowed' : ''}`}
                   >
-                    <div className="font-medium">
-                      {o.label} 
-                      {votedOptions.some(vo => vo.id === o.id) && (
-                        <span className="text-xs text-muted-foreground ml-2">
-                          {campaign?.vote_type === "single" ? "(your vote)" : `(rank ${votedOptions.find(vo => vo.id === o.id)?.rank})`}
-                        </span>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{o.label}</div>
+                        {o.description && <div className="text-xs text-muted-foreground">{o.description}</div>}
+                      </div>
+                      {campaign?.vote_type === "preferential" && (
+                        <div className="ml-4 flex-shrink-0">
+                          {selectedOptionIds.includes(o.id) && (
+                            <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium">
+                              {selectedOptionIds.indexOf(o.id) + 1}
+                            </div>
+                          )}
+                          {votedOptions.some(vo => vo.id === o.id) && !selectedOptionIds.includes(o.id) && (
+                            <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium">
+                              {votedOptions.find(vo => vo.id === o.id)?.rank}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {campaign?.vote_type === "single" && votedOptions.some(vo => vo.id === o.id) && (
+                        <span className="text-xs text-muted-foreground ml-2">(your vote)</span>
                       )}
                     </div>
-                    {o.description && <div className="text-xs text-muted-foreground">{o.description}</div>}
                   </button>
                 ))}
               </>

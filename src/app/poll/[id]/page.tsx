@@ -16,6 +16,7 @@ export default function PollDetailPage() {
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [voteMsg, setVoteMsg] = useState<string | null>(null);
   const [votedOptionId, setVotedOptionId] = useState<string | null>(null);
+  const [votedOptions, setVotedOptions] = useState<{id: string, label: string, rank?: number}[]>([]);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [campaignLoading, setCampaignLoading] = useState(true);
@@ -152,62 +153,93 @@ export default function PollDetailPage() {
       }
 
       // Check if this voter already voted in this campaign
-      const voterId = await getVoterId();
-      const { data: existing } = await supabase
-        .from("votes_single")
-        .select("option_id")
-        .eq("campaign_id", id)
-        .eq("voter_id", voterId)
-        .maybeSingle();
-      if (existing?.option_id) setVotedOptionId(existing.option_id as string);
+      let voterId: string;
+      try {
+        voterId = await getVoterId();
+      } catch (error) {
+        console.error("Authentication error:", error);
+        setLoading(false);
+        return;
+      }
+      
+      // Check for existing vote based on campaign type
+      if (campaign?.vote_type === "single") {
+        const { data: existing } = await supabase
+          .from("votes_single")
+          .select("option_id")
+          .eq("campaign_id", id)
+          .eq("voter_id", voterId)
+          .maybeSingle();
+        
+        if (existing?.option_id) {
+          setVotedOptionId(existing.option_id as string);
+          // Find the option details for display
+          const option = options.find(o => o.id === existing.option_id);
+          if (option) {
+            setVotedOptions([{id: option.id, label: option.label}]);
+          }
+        }
+      } else {
+        // Check for preferential votes
+        const { data: existing } = await supabase
+          .from("votes_preferential")
+          .select("option_id, rank")
+          .eq("campaign_id", id)
+          .eq("voter_id", voterId)
+          .order("rank", { ascending: true });
+        
+        if (existing && existing.length > 0) {
+          setVotedOptionId("done");
+          // Map the votes to option details with ranks
+          const votedOptionsWithDetails = existing.map(vote => {
+            const option = options.find(o => o.id === vote.option_id);
+            return {
+              id: vote.option_id,
+              label: option?.label || vote.option_id,
+              rank: vote.rank
+            };
+          });
+          setVotedOptions(votedOptionsWithDetails);
+        }
+      }
       setLoading(false);
     })();
-  }, [id, router]);
+  }, [id, router, campaign?.vote_type, options]);
 
   async function getVoterId(): Promise<string> {
-    // First try to get the authenticated user's ID from Supabase auth
-    try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (!authError && user?.id) {
-        // Verify this user exists in our users table and get their auth_id
-        const { data: userData } = await supabase
-          .from("users")
-          .select("auth_id")
-          .eq("auth_id", user.id)
-          .single();
-        
-        if (userData?.auth_id) {
-          return userData.auth_id;
-        }
-      }
-    } catch {}
+    // Get the authenticated user's ID from Supabase auth
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    // Fallback: try to get user from localStorage email
-    try {
-      const email = localStorage.getItem("appEmail");
-      if (email) {
-        const { data: userData } = await supabase
-          .from("users")
-          .select("auth_id")
-          .eq("email", email)
-          .single();
-        
-        if (userData?.auth_id) {
-          return userData.auth_id;
-        }
-      }
-    } catch {}
-    
-    // Final fallback to a persistent client id
-    try {
-      const stored = localStorage.getItem("voterId");
-      if (stored) return stored;
-      const created = generateUUID();
-      localStorage.setItem("voterId", created);
-      return created;
-    } catch {
-      return generateUUID();
+    if (authError || !user?.id) {
+      throw new Error("You must be logged in to vote. Please sign in first.");
     }
+
+    // Verify this user exists in our users table and get their auth_id
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("auth_id")
+      .eq("auth_id", user.id)
+      .single();
+    
+    if (userError || !userData?.auth_id) {
+      throw new Error("User account not found. Please ensure you're properly registered.");
+    }
+
+    return userData.auth_id;
+  }
+
+  async function getNextVoteId(tableName: 'votes_single' | 'votes_preferential'): Promise<number> {
+    // Get the highest current ID from the votes table
+    const { data, error } = await supabase
+      .from(tableName)
+      .select('id')
+      .order('id', { ascending: false })
+      .limit(1);
+    
+    if (error) throw error;
+    
+    // If no records exist, start with ID 1, otherwise use highest ID + 1
+    return data && data.length > 0 ? (data[0].id as number) + 1 : 1;
   }
 
   const selectCandidate = (optionId: string) => {
@@ -241,11 +273,34 @@ export default function PollDetailPage() {
         return;
       }
 
-      const voterId = await getVoterId();
+      let voterId: string;
+      try {
+        voterId = await getVoterId();
+      } catch (error) {
+        setVoteMsg(error instanceof Error ? error.message : "Authentication error. Please log in again.");
+        return;
+      }
 
       if (campaign?.vote_type === "single") {
-        // Single vote
+        // Single vote - check if user already voted first
+        const { data: existingVote, error: checkError } = await supabase
+          .from("votes_single")
+          .select("option_id")
+          .eq("campaign_id", id)
+          .eq("voter_id", voterId)
+          .maybeSingle();
+        
+        if (checkError) throw checkError;
+        if (existingVote) {
+          setVoteMsg("You have already voted in this poll.");
+          setVotedOptionId(existingVote.option_id);
+          return;
+        }
+
+        // Get next available ID and insert vote
+        const nextId = await getNextVoteId('votes_single');
         const payload = {
+          id: nextId,
           campaign_id: id,
           option_id: selectedOptionIds[0],
           voter_id: voterId,
@@ -254,9 +309,31 @@ export default function PollDetailPage() {
         const { error } = await supabase.from("votes_single").insert(payload);
         if (error) throw error;
         setVotedOptionId(selectedOptionIds[0]);
+        // Set voted options for display
+        const votedOption = options.find(o => o.id === selectedOptionIds[0]);
+        if (votedOption) {
+          setVotedOptions([{id: votedOption.id, label: votedOption.label}]);
+        }
       } else {
-        // Preferential voting - insert multiple rows with rank
+        // Preferential voting - check if user already voted first
+        const { data: existingVotes, error: checkError } = await supabase
+          .from("votes_preferential")
+          .select("option_id")
+          .eq("campaign_id", id)
+          .eq("voter_id", voterId)
+          .limit(1);
+        
+        if (checkError) throw checkError;
+        if (existingVotes && existingVotes.length > 0) {
+          setVoteMsg("You have already voted in this poll.");
+          setVotedOptionId("done");
+          return;
+        }
+
+        // Get next available IDs and insert preferential votes with rank
+        const baseId = await getNextVoteId('votes_preferential');
         const payloads = selectedOptionIds.map((optId, i) => ({
+          id: baseId + i, // Sequential IDs starting from baseId
           campaign_id: id,
           option_id: optId,
           voter_id: voterId,
@@ -266,9 +343,18 @@ export default function PollDetailPage() {
         const { error } = await supabase.from("votes_preferential").insert(payloads);
         if (error) throw error;
         setVotedOptionId("done"); // marker that vote is done
+        // Set voted options for display with ranks
+        const votedOptionsWithRanks = selectedOptionIds.map((optionId, index) => {
+          const option = options.find(o => o.id === optionId);
+          return {
+            id: optionId,
+            label: option?.label || optionId,
+            rank: index + 1
+          };
+        });
+        setVotedOptions(votedOptionsWithRanks);
       }
 
-      setVoteMsg("Vote submitted successfully!");
       setSelectedOptionIds([]);
 
       try {
@@ -314,75 +400,62 @@ export default function PollDetailPage() {
 
       {role === "student" ? (
         <div className="rounded-xl border border-border bg-card p-6">
-          {votedOptionId ? (
-            // Already voted - show results
-            <>
-              <p className="text-sm text-muted-foreground mb-4">Your vote has been submitted</p>
-              <div className="space-y-2">
+          <p className="text-sm text-muted-foreground mb-4">
+            {selectedOptionId ? "Confirm your selection" : "Choose a candidate"}
+          </p>
+          <div className="space-y-2">
+            {loading ? (
+              <>
+                <div className="h-10 bg-muted animate-pulse rounded"></div>
+                <div className="h-10 bg-muted animate-pulse rounded"></div>
+                <div className="h-10 bg-muted animate-pulse rounded"></div>
+                <div className="h-10 bg-muted animate-pulse rounded"></div>
+              </>
+            ) : options.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No options available yet.</div>
+            ) : (
+              <>
+                {voteMsg && (
+                  <div className={`text-xs ${voteMsg.includes('successfully') ? 'text-green-600' : 'text-red-600'}`}>
+                    {voteMsg}
+                  </div>
+                )}
                 {options.map((o) => (
-                  <div
+                  <button
                     key={o.id}
-                    className={`w-full text-left rounded-md px-4 py-2 text-sm border ${
-                      o.id === votedOptionId
-                        ? "bg-primary/15 border-primary/40"
-                        : "bg-card border-border"
-                    }`}
+                    onClick={() => toggleCandidate(o.id)}
+                    disabled={votedOptionId !== null}
+                    className={`w-full text-left rounded-md px-4 py-2 text-sm border transition-colors ${
+                      selectedOptionIds.includes(o.id) || votedOptions.some(vo => vo.id === o.id)
+                        ? "bg-primary/20 border-primary/60 ring-2 ring-primary/30"
+                        : "bg-card border-border hover:bg-muted/50"
+                    } ${votedOptionId !== null ? 'cursor-not-allowed' : ''}`}
                   >
                     <div className="font-medium">
-                      {o.label} {o.id === votedOptionId && <span className="text-xs text-muted-foreground">(your vote)</span>}
+                      {o.label} 
+                      {votedOptions.some(vo => vo.id === o.id) && (
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {campaign?.vote_type === "single" ? "(your vote)" : `(rank ${votedOptions.find(vo => vo.id === o.id)?.rank})`}
+                        </span>
+                      )}
                     </div>
                     {o.description && <div className="text-xs text-muted-foreground">{o.description}</div>}
-                  </div>
+                  </button>
                 ))}
-              </div>
-            </>
-          ) : (
-            // Voting process
-            <>
-              <p className="text-sm text-muted-foreground mb-4">
-                {selectedOptionId ? "Confirm your selection" : "Choose a candidate"}
-              </p>
-              <div className="space-y-2">
-                {loading ? (
-                  <>
-                    <div className="h-10 bg-muted animate-pulse rounded"></div>
-                    <div className="h-10 bg-muted animate-pulse rounded"></div>
-                    <div className="h-10 bg-muted animate-pulse rounded"></div>
-                    <div className="h-10 bg-muted animate-pulse rounded"></div>
-                  </>
-                ) : options.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No options available yet.</div>
-                ) : (
-                  <>
-                    {voteMsg && (
-                      <div className={`text-xs ${voteMsg.includes('successfully') ? 'text-green-600' : 'text-red-600'}`}>
-                        {voteMsg}
-                      </div>
-                    )}
-                    {options.map((o) => (
-                      <button
-                        key={o.id}
-                        onClick={() => toggleCandidate(o.id)}
-                        className={`w-full text-left rounded-md px-4 py-2 text-sm border transition-colors ${
-                          selectedOptionIds.includes(o.id)
-                            ? "bg-primary/20 border-primary/60 ring-2 ring-primary/30"
-                            : "bg-card border-border hover:bg-muted/50"
-                        }`}
-                      >
-                        <div className="font-medium">{o.label}</div>
-                        {o.description && <div className="text-xs text-muted-foreground">{o.description}</div>}
-                      </button>
-                    ))}
-                  </>
-                )}
-              </div>
-              
-            </>
-          )}
+              </>
+            )}
+          </div>
           
           <div className="mt-4 flex justify-end gap-3">
-            {/* Submit button appears only when a candidate is selected */}
-            {selectedOptionIds.length > 0 && (
+            {/* Submit button */}
+            {votedOptionId ? (
+              <button
+                disabled={true}
+                className="rounded-md bg-gray-300 text-gray-500 px-4 py-2 text-sm cursor-not-allowed"
+              >
+                Vote Submitted
+              </button>
+            ) : selectedOptionIds.length > 0 ? (
               <button
                 onClick={castVote}
                 disabled={submitting !== null}
@@ -390,7 +463,7 @@ export default function PollDetailPage() {
               >
                 {submitting ? "Submitting..." : campaign?.vote_type === "preferential" ? "Submit Preferences" : "Submit Vote"}
               </button>
-            )}
+            ) : null}
 
             <button 
               className="rounded-md bg-secondary text-secondary-foreground px-4 py-2 text-sm"

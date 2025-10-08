@@ -259,6 +259,7 @@ export default function PollDetailPage() {
     }
   };
 
+
   const castVote = async () => {
     if (selectedOptionIds.length === 0) {
       setVoteMsg("Please select at least one candidate.");
@@ -505,6 +506,7 @@ export default function PollDetailPage() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

@@ -22,6 +22,7 @@ type Campaign = {
 
 export default function OngoingPollsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [ongoingCampaigns, setOngoingCampaigns] = useState<Campaign[]>([]);
   const [codes, setCodes] = useState<Record<string, string>>({});
   const initialRole = ((): "student" | "admin" | null => {
     if (typeof window === "undefined") return null;
@@ -185,7 +186,19 @@ export default function OngoingPollsPage() {
           .limit(100);
         
         if (Array.isArray(data)) {
-          setCampaigns(data as Campaign[]);
+          const allCampaigns = data as Campaign[];
+          setCampaigns(allCampaigns);
+          
+          // Separate ongoing and completed polls
+          const now = new Date().toISOString();
+          const ongoing = allCampaigns.filter(c => 
+            c.ends_at && new Date(c.ends_at).toISOString() > now
+          );
+          const completed = allCampaigns.filter(c => 
+            c.ends_at && new Date(c.ends_at).toISOString() <= now
+          );
+          
+          setOngoingCampaigns(ongoing);
         }
       } finally {
         setCampaignsLoading(false);
@@ -300,6 +313,13 @@ export default function OngoingPollsPage() {
           {!roleLoading && role === "admin" && (
             <Button size="sm" onClick={() => router.push("/polls/new")}>Add poll</Button>
           )}
+          <Button 
+            size="sm" 
+            variant="secondary" 
+            onClick={() => router.push("/polling-menu/completed")}
+          >
+            View Completed
+          </Button>
           <Button size="sm" variant="secondary" onClick={toggleProfile}>Profile</Button>
         </div>
       </header>
@@ -339,7 +359,7 @@ export default function OngoingPollsPage() {
 
       {/* Admin add form moved to /polls/new */}
 
-      <main className="w-full px-4 pt-6 pb-10 space-y-4 relative z-10">
+      <main className="w-full px-4 pt-6 pb-10 space-y-6 relative z-10">
         {(roleLoading || campaignsLoading) && (
           <div className="w-full max-w-2xl mx-auto">
             {Array.from({ length: campaigns.length > 0 ? campaigns.length : 3 }).map((_, index) => (
@@ -347,38 +367,53 @@ export default function OngoingPollsPage() {
             ))}
           </div>
         )}
-        {!roleLoading && !campaignsLoading && campaigns.map((c) => (
-          <Card key={c.id} className="w-full max-w-2xl mx-auto border-muted/40 bg-card/60 backdrop-blur">
-            <CardHeader className="pb-0"></CardHeader>
-            <CardContent>
-              {c.club && <div className="text-sm text-muted-foreground font-medium">{c.club}</div>}
-              <div className="text-foreground text-lg font-semibold mt-1">{c.title}</div>
-              {c.description && <div className="text-muted-foreground text-xs mt-1">{c.description}</div>}
-              {role === "student" ? (
-                <div className="flex items-center gap-2 mt-4">
-                  <Input
-                    type="text"
-                    placeholder="Enter code"
-                    value={codes[c.id] || ""}
-                    onChange={e => handleCodeChange(c.id, e.target.value)}
-                  />
-                  <Button size="sm" onClick={() => handleJoin(c.id)} disabled={(codes[c.id] || "").trim() === ""}>
-                    Join
-                  </Button>
-                </div>
-              ) : (
-              <div className="flex items-center gap-2 mt-4">
-                  <Button size="sm" variant="secondary" onClick={() => router.push(`/poll/${c.id}/results`)}>
-                    View votes
-                  </Button>
-                  <Button size="sm" variant="secondary" onClick={() => router.push(`/poll/${c.id}/summary`)}>
-                    View Summary
-                  </Button>
+        
+        {!roleLoading && !campaignsLoading && (
+          <div className="w-full max-w-2xl mx-auto">
+            {ongoingCampaigns.length > 0 ? (
+              <div className="space-y-4">
+                {ongoingCampaigns.map((c) => (
+                  <Card key={c.id} className="w-full border-muted/40 bg-card/60 backdrop-blur">
+                    <CardHeader className="pb-0"></CardHeader>
+                    <CardContent>
+                      {c.club && <div className="text-sm text-muted-foreground font-medium">{c.club}</div>}
+                      <div className="text-foreground text-lg font-semibold mt-1">{c.title}</div>
+                      {c.description && <div className="text-muted-foreground text-xs mt-1">{c.description}</div>}
+                      {c.ends_at && (
+                        <div className="text-xs text-muted-foreground mt-2">
+                          Ends: {new Date(c.ends_at).toLocaleDateString()} at {new Date(c.ends_at).toLocaleTimeString()}
+                        </div>
+                      )}
+                      {role === "student" ? (
+                        <div className="flex items-center gap-2 mt-4">
+                          <Input
+                            type="text"
+                            placeholder="Enter code"
+                            value={codes[c.id] || ""}
+                            onChange={e => handleCodeChange(c.id, e.target.value)}
+                          />
+                          <Button size="sm" onClick={() => handleJoin(c.id)} disabled={(codes[c.id] || "").trim() === ""}>
+                            Join
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 mt-4">
+                          <Button size="sm" variant="secondary" onClick={() => router.push(`/poll/${c.id}/results`)}>
+                            View votes
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No ongoing polls at the moment.
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

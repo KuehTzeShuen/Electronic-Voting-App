@@ -54,7 +54,7 @@ export default function PollDetailPage() {
         .maybeSingle();
       
       if (camp) {
-        const campaignData = camp as { title: string; description: string | null; club: string | null; starts_at: string | null; ends_at: string | null };
+        const campaignData = camp as { title: string; description: string | null; club: string | null; starts_at: string | null; ends_at: string | null; vote_type?: "single" | "preferential" };
         setCampaign(campaignData);
         // Cache the data
         try {
@@ -283,6 +283,10 @@ export default function PollDetailPage() {
         return;
       }
 
+      console.log('Campaign vote_type:', campaign?.vote_type);
+      console.log('Campaign object:', campaign);
+      console.log('Selected option IDs:', selectedOptionIds);
+      console.log('Selected option ID (singular):', selectedOptionId);
       if (campaign?.vote_type === "single") {
         // Single vote - check if user already voted first
         const { data: existingVote, error: checkError } = await supabase
@@ -301,18 +305,23 @@ export default function PollDetailPage() {
 
         // Get next available ID and insert vote
         const nextId = await getNextVoteId('votes_single');
+        const optionId = selectedOptionId || selectedOptionIds[0];
         const payload = {
           id: nextId,
           campaign_id: id,
-          option_id: selectedOptionIds[0],
+          option_id: optionId,
           voter_id: voterId,
           created_at: new Date().toISOString(),
         };
+        console.log('Inserting into votes_single table:', payload);
         const { error } = await supabase.from("votes_single").insert(payload);
-        if (error) throw error;
-        setVotedOptionId(selectedOptionIds[0]);
+        if (error) {
+          console.error('Error inserting into votes_single:', error);
+          throw error;
+        }
+        setVotedOptionId(optionId);
         // Set voted options for display
-        const votedOption = options.find(o => o.id === selectedOptionIds[0]);
+        const votedOption = options.find(o => o.id === optionId);
         if (votedOption) {
           setVotedOptions([{id: votedOption.id, label: votedOption.label}]);
         }
@@ -342,8 +351,12 @@ export default function PollDetailPage() {
           rank: i + 1, // order of selection
           created_at: new Date().toISOString(),
         }));
+        console.log('Inserting into votes_preferential table:', payloads);
         const { error } = await supabase.from("votes_preferential").insert(payloads);
-        if (error) throw error;
+        if (error) {
+          console.error('Error inserting into votes_preferential:', error);
+          throw error;
+        }
         setVotedOptionId("done"); // marker that vote is done
         // Set voted options for display with ranks
         const votedOptionsWithRanks = selectedOptionIds.map((optionId, index) => {
@@ -435,7 +448,12 @@ export default function PollDetailPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="font-medium">{o.label}</div>
+                        <div className="font-medium">
+                          {o.label}
+                          {campaign?.vote_type === "single" && votedOptions.some(vo => vo.id === o.id) && (
+                            <span className="text-xs text-muted-foreground ml-2">(your vote)</span>
+                          )}
+                        </div>
                         {o.description && <div className="text-xs text-muted-foreground">{o.description}</div>}
                       </div>
                       {campaign?.vote_type === "preferential" && (
@@ -452,9 +470,6 @@ export default function PollDetailPage() {
                           )}
                         </div>
                       )}
-                      {campaign?.vote_type === "single" && votedOptions.some(vo => vo.id === o.id) && (
-                        <span className="text-xs text-muted-foreground ml-2">(your vote)</span>
-                      )}
                     </div>
                   </button>
                 ))}
@@ -465,12 +480,20 @@ export default function PollDetailPage() {
           <div className="mt-4 flex justify-end gap-3">
             {/* Submit button */}
             {votedOptionId ? (
-              <button
-                disabled={true}
-                className="rounded-md bg-gray-300 text-gray-500 px-4 py-2 text-sm cursor-not-allowed"
-              >
-                Vote Submitted
-              </button>
+              <>
+                <button
+                  disabled={true}
+                  className="rounded-md bg-gray-300 text-gray-500 px-4 py-2 text-sm cursor-not-allowed"
+                >
+                  Vote Submitted
+                </button>
+                <button 
+                  className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm hover:bg-primary/90"
+                  onClick={() => router.push(`/poll/${id}/incentive`)}
+                >
+                  View Incentives
+                </button>
+              </>
             ) : selectedOptionIds.length > 0 ? (
               <button
                 onClick={castVote}

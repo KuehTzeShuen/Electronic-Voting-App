@@ -36,7 +36,19 @@ export default function OngoingPollsPage() {
   const [roleLoading, setRoleLoading] = useState<boolean>(true);
   const [campaignsLoading, setCampaignsLoading] = useState<boolean>(true);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [profile, setProfile] = useState<{ email: string | null; first_name: string | null; last_name: string | null; student_id: string | null; role: string | null } | null>(null);
+  const [profile, setProfile] = useState<{ 
+    email: string | null; 
+    first_name: string | null; 
+    last_name: string | null; 
+    student_id: string | null; 
+    gender: string | null;
+    ug_pg: string | null;
+    dob: string | null;
+    discipline: number | null;
+    location: number | null;
+    grade: string | null;
+    role: string | null 
+  } | null>(null);
   // Admin add form moved to /polls/new; local inputs removed
 
   // const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
@@ -185,23 +197,53 @@ export default function OngoingPollsPage() {
     const nextOpen = !profileOpen;
     setProfileOpen(nextOpen);
     if (nextOpen && !profile) {
-      // Get email from localStorage (same as authentication check)
-      let email: string | null = null;
+      let userRow: { 
+        email: string | null; 
+        first_name: string | null; 
+        last_name: string | null; 
+        student_id: string | null; 
+        gender: string | null;
+        ug_pg: string | null;
+        dob: string | null;
+        discipline: number | null;
+        location: number | null;
+        grade: string | null;
+        role: string | null 
+      } | null = null;
+      
+      // First try to get user from Supabase auth
       try {
-        email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
-      } catch (_) {
-        // localStorage not available
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (!authError && user?.id) {
+          const { data } = await supabase
+            .from("users")
+            .select("email, first_name, last_name, student_id, gender, ug_pg, dob, discipline, location, grade, role")
+            .eq("auth_id", user.id)
+            .limit(1)
+            .maybeSingle();
+          if (data) userRow = data;
+        }
+      } catch {}
+      
+      // Fallback to localStorage email if auth user not found
+      if (!userRow) {
+        let email: string | null = null;
+        try {
+          email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
+        } catch (_) {
+          // localStorage not available
+        }
+        if (email) {
+          const { data } = await supabase
+            .from("users")
+            .select("email, first_name, last_name, student_id, gender, ug_pg, dob, discipline, location, grade, role")
+            .eq("email", email)
+            .limit(1)
+            .maybeSingle();
+          if (data) userRow = data;
+        }
       }
-      let userRow: { first_name: string | null; last_name: string | null; student_id: string | null; role: string | null } | null = null;
-      if (email) {
-        const { data } = await supabase
-          .from("users")
-          .select("first_name, last_name, student_id, role")
-          .eq("email", email)
-          .limit(1)
-          .maybeSingle();
-        if (data) userRow = data as { first_name: string | null; last_name: string | null; student_id: string | null; role: string | null };
-      }
+      
       // Role should reflect the user's chosen session role only (not DB),
       // so prefer localStorage appRole, falling back to current in-memory role.
       let resolvedRole: string | null = null;
@@ -210,11 +252,18 @@ export default function OngoingPollsPage() {
         if (stored === "admin" || stored === "student") resolvedRole = stored;
       } catch {}
       if (!resolvedRole) resolvedRole = role;
+      
       setProfile({
-        email,
+        email: userRow?.email ?? null,
         first_name: userRow?.first_name ?? null,
         last_name: userRow?.last_name ?? null,
         student_id: userRow?.student_id ?? null,
+        gender: userRow?.gender ?? null,
+        ug_pg: userRow?.ug_pg ?? null,
+        dob: userRow?.dob ?? null,
+        discipline: userRow?.discipline ?? null,
+        location: userRow?.location ?? null,
+        grade: userRow?.grade ?? null,
         role: resolvedRole,
       });
     }
@@ -260,10 +309,16 @@ export default function OngoingPollsPage() {
           <div className="fixed inset-0 z-[999] bg-black/40" onClick={toggleProfile} />
           <div className="fixed right-6 top-20 z-[1000] w-64 rounded-md border border-border bg-card p-3 shadow-lg">
             <div className="text-sm font-medium text-foreground mb-2">Profile</div>
-            <div className="text-xs text-muted-foreground space-y-1">
+            <div className="text-xs text-muted-foreground space-y-1 max-h-80 overflow-y-auto">
               <div><span className="font-medium text-foreground">Email:</span> {profile?.email ?? "-"}</div>
               <div><span className="font-medium text-foreground">Name:</span> {(profile?.first_name ?? "-") + " " + (profile?.last_name ?? "")}</div>
               <div><span className="font-medium text-foreground">Student ID:</span> {profile?.student_id ?? "-"}</div>
+              <div><span className="font-medium text-foreground">Gender:</span> {profile?.gender ?? "-"}</div>
+              <div><span className="font-medium text-foreground">Level:</span> {profile?.ug_pg ?? "-"}</div>
+              <div><span className="font-medium text-foreground">Date of Birth:</span> {profile?.dob ? new Date(profile.dob).toLocaleDateString() : "-"}</div>
+              <div><span className="font-medium text-foreground">Discipline:</span> {profile?.discipline ?? "-"}</div>
+              <div><span className="font-medium text-foreground">Location:</span> {profile?.location ?? "-"}</div>
+              <div><span className="font-medium text-foreground">Grade:</span> {profile?.grade ?? "-"}</div>
               <div><span className="font-medium text-foreground">Role:</span> {profile?.role ?? "-"}</div>
             </div>
             <div className="mt-3 flex justify-end gap-2">

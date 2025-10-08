@@ -31,23 +31,36 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      // Check user exists by email + student_id
-      const { data, error: fetchError } = await supabase
+      // Check if user exists in our users table with the specified email and student_id
+      const { data: userData, error: fetchError } = await supabase
         .from("users")
-        .select("student_id")
+        .select("auth_id, student_id")
         .eq("email", email)
         .eq("student_id", studentId)
         .eq("role", role)
         .maybeSingle();
       if (fetchError) throw fetchError;
-      if (!data) throw new Error("No account found for this email and student ID");
+      if (!userData) throw new Error("No account found for this email and student ID");
+      
+      // Send OTP for authentication
+      const { error: signInError } = await supabase.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser: false }, // Don't create new user, just authenticate existing
+      });
+      if (signInError) throw signInError;
+      
+      // For now, we'll store the role and email for the session
+      // In a full implementation, you might want to add an OTP verification step here
       try {
         if (typeof window !== "undefined") {
           localStorage.setItem("appRole", role);
           localStorage.setItem("appEmail", email);
+          localStorage.setItem("pendingLogin", "true"); // Flag to indicate login is pending OTP
         }
       } catch {}
-      router.push(role === "admin" ? "/polling-menu" : "/polling-menu");
+      
+      // For now, redirect immediately (you might want to add OTP verification step)
+      router.push("/polling-menu");
     } catch (err: unknown) {
       setError(getErrorMessage(err) || "Login failed");
     } finally {

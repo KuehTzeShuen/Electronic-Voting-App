@@ -165,13 +165,40 @@ export default function PollDetailPage() {
   }, [id, router]);
 
   async function getVoterId(): Promise<string> {
-    // Prefer Supabase auth user id when available
+    // First try to get the authenticated user's ID from Supabase auth
     try {
-      const { data: session } = await supabase.auth.getUser();
-      const authId = (session.user?.id as string | undefined) || null;
-      if (authId) return authId;
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (!authError && user?.id) {
+        // Verify this user exists in our users table and get their auth_id
+        const { data: userData } = await supabase
+          .from("users")
+          .select("auth_id")
+          .eq("auth_id", user.id)
+          .single();
+        
+        if (userData?.auth_id) {
+          return userData.auth_id;
+        }
+      }
     } catch {}
-    // Fallback to a persistent client id
+    
+    // Fallback: try to get user from localStorage email
+    try {
+      const email = localStorage.getItem("appEmail");
+      if (email) {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("auth_id")
+          .eq("email", email)
+          .single();
+        
+        if (userData?.auth_id) {
+          return userData.auth_id;
+        }
+      }
+    } catch {}
+    
+    // Final fallback to a persistent client id
     try {
       const stored = localStorage.getItem("voterId");
       if (stored) return stored;

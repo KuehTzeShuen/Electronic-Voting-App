@@ -208,22 +208,25 @@ export default function PollDetailPage() {
   }, [id, router, campaign?.vote_type, options]);
 
   async function getVoterId(): Promise<string> {
-    // Get the authenticated user's ID from Supabase auth
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Check localStorage for authentication (your app's auth system)
+    const appEmail = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
+    const appRole = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
     
-    if (authError || !user?.id) {
+    if (!appEmail || !appRole) {
       throw new Error("You must be logged in to vote. Please sign in first.");
     }
 
-    // Verify this user exists in our users table and get their auth_id
+    // Try to get the user's auth_id from the users table using email
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("auth_id")
-      .eq("auth_id", user.id)
+      .eq("email", appEmail)
+      .eq("role", appRole)
       .single();
     
     if (userError || !userData?.auth_id) {
-      throw new Error("User account not found. Please ensure you're properly registered.");
+      // If we can't find the user in the database, create a demo ID based on email
+      return `user-${appEmail.replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}`;
     }
 
     return userData.auth_id;

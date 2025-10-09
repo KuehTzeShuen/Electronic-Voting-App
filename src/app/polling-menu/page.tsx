@@ -194,9 +194,9 @@ export default function OngoingPollsPage() {
           const ongoing = allCampaigns.filter(c => 
             c.ends_at && new Date(c.ends_at).toISOString() > now
           );
-          const completed = allCampaigns.filter(c => 
-            c.ends_at && new Date(c.ends_at).toISOString() <= now
-          );
+          // const completed = allCampaigns.filter(c => 
+          //   c.ends_at && new Date(c.ends_at).toISOString() <= now
+          // );
           
           setOngoingCampaigns(ongoing);
         }
@@ -243,7 +243,7 @@ export default function OngoingPollsPage() {
         let email: string | null = null;
         try {
           email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
-        } catch (_) {
+        } catch {
           // localStorage not available
         }
         if (email) {

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRouter } from 'next/navigation'
 import SignupPage from '../page'
@@ -150,7 +150,6 @@ describe('Signup Page', () => {
   })
 
   it('navigates to login page when login link is clicked', async () => {
-    const user = userEvent.setup()
     render(<SignupPage />)
     
     // The signup page doesn't have a login link in the current implementation

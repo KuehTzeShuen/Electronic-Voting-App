@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
-import { motion, useAnimation, AnimatePresence } from "framer-motion";
+import { motion, useAnimation, AnimatePresence, type Transition } from "framer-motion";
 import { useRouter, useParams } from "next/navigation";
 
 type Rarity =
@@ -173,7 +173,7 @@ export default function CaseRoller() {
     const easeChoice = EASES[Math.floor(rng() * EASES.length)];
 
     await controls.start({ x: 0, transition: { duration: 0, ease: "linear" } });
-    await controls.start({ x: targetX, transition: { duration, ease: easeChoice } });
+    await controls.start({ x: targetX, transition: { duration, ease: easeChoice as Transition['ease'] } });
     await controls.start({ x: targetX + 14, transition: { duration: 0.18 } });
     await controls.start({ x: targetX, transition: { duration: 0.22 } });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { generateUUID } from "@/lib/uuid";
+// import { generateUUID } from "@/lib/uuid";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -17,10 +17,10 @@ export default function PollDetailPage() {
   const [voteMsg, setVoteMsg] = useState<string | null>(null);
   const [votedOptionId, setVotedOptionId] = useState<string | null>(null);
   const [votedOptions, setVotedOptions] = useState<{id: string, label: string, rank?: number}[]>([]);
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [selectedOptionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [campaignLoading, setCampaignLoading] = useState(true);
-  const [showReward, setShowReward] = useState(false);
+  // const [showReward, setShowReward] = useState(false);
 
   const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
 
@@ -246,10 +246,10 @@ export default function PollDetailPage() {
     return data && data.length > 0 ? (data[0].id as number) + 1 : 1;
   }
 
-  const selectCandidate = (optionId: string) => {
-    setSelectedOptionId(optionId);
-    setVoteMsg(null);
-  };
+  // const selectCandidate = (optionId: string) => {
+  //   setSelectedOptionId(optionId);
+  //   setVoteMsg(null);
+  // };
 
   const toggleCandidate = (optionId: string) => {
     setVoteMsg(null);

@@ -34,7 +34,7 @@ export default function CompletedPollsPage() {
     }
   })();
 
-  const [role, setRole] = useState<"student" | "admin" | null>(initialRole);
+  const [role] = useState<"student" | "admin" | null>(initialRole);
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [profile, setProfile] = useState<{ email: string; role: "student" | "admin"; first_name?: string; last_name?: string; student_id?: string; gender?: string; ug_pg?: string; dob?: string; discipline?: string; location?: string; grade?: string } | null>(null);
@@ -61,7 +61,7 @@ export default function CompletedPollsPage() {
                 role: stored as "student" | "admin",
                 ...userData
               });
-            } catch (error) {
+            } catch {
               // Fallback to basic profile if detailed fetch fails
               setProfile({ email: storedEmail, role: stored as "student" | "admin" });
             }

@@ -24,8 +24,8 @@ export default function Navbar() {
 
   const links = [
     { name: "Home", href: "/" },
-    { name: "About", href: "/about" },
-    { name: "Settings", href: "/settings" },
+    { name: "Polls", href: "/about" },
+    // { name: "Settings", href: "/settings" },
     { name: "Help", href: "/help" },
   ];
 

@@ -2,132 +2,92 @@
 
 import { generateUUID } from "@/lib/uuid";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { useRouter } from "next/navigation";
+import PreferentialPoll from "@/components/PreferentialPoll";
 
 export default function PollDetailPage() {
   const params = useParams();
-  const id = Array.isArray(params?.id) ? params?.id[0] : (params?.id as string);
+  const router = useRouter();
+  const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
+
   const [role, setRole] = useState<"student" | "admin">("student");
   const [options, setOptions] = useState<{ id: string; label: string; description: string | null }[]>([]);
-  const [campaign, setCampaign] = useState<{ title: string; description: string | null; club: string | null; starts_at: string | null; ends_at: string | null; vote_type?: "single" | "preferential"; } | null>(null);
-  const router = useRouter();
+  const [campaign, setCampaign] = useState<{
+    title: string;
+    description: string | null;
+    club: string | null;
+    starts_at: string | null;
+    ends_at: string | null;
+    vote_type?: "single" | "preferential";
+  } | null>(null);
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [voteMsg, setVoteMsg] = useState<string | null>(null);
   const [votedOptionId, setVotedOptionId] = useState<string | null>(null);
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [campaignLoading, setCampaignLoading] = useState(true);
 
-  const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
-
-
-  // Load campaign details immediately with caching
+  // 🧠 Load campaign details with caching
   useEffect(() => {
     (async () => {
       const CACHE_KEY = `campaign-${id}`;
-      const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
-      
-      // Try to load from cache first
+      const CACHE_DURATION = 10 * 60 * 1000; // 10 mins
+
       try {
         const cached = localStorage.getItem(CACHE_KEY);
         if (cached) {
-          const { data: cachedData, timestamp } = JSON.parse(cached);
+          const { data, timestamp } = JSON.parse(cached);
           if (Date.now() - timestamp < CACHE_DURATION) {
-            setCampaign(cachedData);
+            setCampaign(data);
             setCampaignLoading(false);
-            return; // Use cached data
+            return;
           }
         }
-      } catch (_) {
-        // Cache invalid, continue to fetch
-      }
+      } catch {}
 
-      // Fetch fresh data
       const { data: camp } = await supabase
         .from("campaigns")
         .select("title, description, club, starts_at, ends_at, vote_type")
         .eq("id", id)
         .maybeSingle();
-      
+
       if (camp) {
-        const campaignData = camp as { title: string; description: string | null; club: string | null; starts_at: string | null; ends_at: string | null };
-        setCampaign(campaignData);
-        // Cache the data
-        try {
-          localStorage.setItem(CACHE_KEY, JSON.stringify({
-            data: campaignData,
-            timestamp: Date.now()
-          }));
-        } catch (_) {
-          // Cache failed, but data is still loaded
-        }
+        setCampaign(camp);
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ data: camp, timestamp: Date.now() }));
       }
       setCampaignLoading(false);
     })();
   }, [id]);
 
-  // Load user role, options, and vote status
+  // ⚙️ Load user, role, options, and vote status
   useEffect(() => {
     (async () => {
-      // Check authentication using localStorage (same as login page)
-      let email: string | null = null;
-      let storedRole: string | null = null;
-      
-      try {
-        email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
-        storedRole = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
-      } catch (_) {
-        // localStorage not available
-      }
-      
+      const email = localStorage.getItem("appEmail");
+      const storedRole = localStorage.getItem("appRole");
+
       if (!email || !storedRole) {
-        // No authentication data, redirect to login
         router.push("/");
         return;
       }
-      
-      // Verify the user exists in the database
-      const { data, error: fetchError } = await supabase
+
+      const { data: user } = await supabase
         .from("users")
         .select("role")
         .eq("email", email)
         .eq("role", storedRole)
         .maybeSingle();
-        
-      if (fetchError || !data) {
-        // User not found or error, redirect to login
+
+      if (!user) {
         router.push("/");
         return;
       }
-      
-      // Set the role from localStorage (which was validated against DB)
+
       setRole(storedRole as "student" | "admin");
-      
-      // Load options for this campaign with caching
+
+      // 🧩 Load and randomise options
       const OPTIONS_CACHE_KEY = `options-${id}`;
-      const OPTIONS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-      
-      // Try to load options from cache first
-      try {
-        const cachedOptions = localStorage.getItem(OPTIONS_CACHE_KEY);
-        if (cachedOptions) {
-          const { data: cachedOptData, timestamp } = JSON.parse(cachedOptions);
-          if (Date.now() - timestamp < OPTIONS_CACHE_DURATION) {
-            setOptions(cachedOptData as { id: string; label: string; description: string | null }[]);
-          } else {
-            // Cache expired, fetch fresh data
-            await fetchAndCacheOptions();
-          }
-        } else {
-          // No cache, fetch fresh data
-          await fetchAndCacheOptions();
-        }
-      } catch (_) {
-        // Cache invalid, fetch fresh data
-        await fetchAndCacheOptions();
-      }
+      const OPTIONS_CACHE_DURATION = 5 * 60 * 1000;
 
       async function fetchAndCacheOptions() {
         const { data: opt } = await supabase
@@ -135,23 +95,31 @@ export default function PollDetailPage() {
           .select("id, label, description")
           .eq("campaign_id", id)
           .order("label", { ascending: true });
-        
-        if (Array.isArray(opt)) {
-          const optionsData = opt as { id: string; label: string; description: string | null }[];
-          setOptions(optionsData);
-          // Cache the options
-          try {
-            localStorage.setItem(OPTIONS_CACHE_KEY, JSON.stringify({
-              data: optionsData,
-              timestamp: Date.now()
-            }));
-          } catch (_) {
-            // Cache failed, but data is still loaded
-          }
+
+        if (opt) {
+          const shuffled = opt.sort(() => Math.random() - 0.5);
+          setOptions(shuffled);
+          localStorage.setItem(OPTIONS_CACHE_KEY, JSON.stringify({ data: shuffled, timestamp: Date.now() }));
         }
       }
 
-      // Check if this voter already voted in this campaign
+      try {
+        const cachedOptions = localStorage.getItem(OPTIONS_CACHE_KEY);
+        if (cachedOptions) {
+          const { data, timestamp } = JSON.parse(cachedOptions);
+          if (Date.now() - timestamp < OPTIONS_CACHE_DURATION) {
+            setOptions(data);
+          } else {
+            await fetchAndCacheOptions();
+          }
+        } else {
+          await fetchAndCacheOptions();
+        }
+      } catch {
+        await fetchAndCacheOptions();
+      }
+
+      // 🗳️ Check vote status
       const voterId = await getVoterId();
       const { data: existing } = await supabase
         .from("votes_single")
@@ -159,35 +127,28 @@ export default function PollDetailPage() {
         .eq("campaign_id", id)
         .eq("voter_id", voterId)
         .maybeSingle();
-      if (existing?.option_id) setVotedOptionId(existing.option_id as string);
+
+      if (existing?.option_id) setVotedOptionId(existing.option_id);
+
       setLoading(false);
     })();
   }, [id, router]);
 
+  // 🆔 Get or generate unique voter ID
   async function getVoterId(): Promise<string> {
-    // Prefer Supabase auth user id when available
-    try {
-      const { data: session } = await supabase.auth.getUser();
-      const authId = (session.user?.id as string | undefined) || null;
-      if (authId) return authId;
-    } catch {}
-    // Fallback to a persistent client id
-    try {
-      const stored = localStorage.getItem("voterId");
-      if (stored) return stored;
-      const created = generateUUID();
-      localStorage.setItem("voterId", created);
-      return created;
-    } catch {
-      return generateUUID();
-    }
+    const { data: session } = await supabase.auth.getUser();
+    const authId = session?.user?.id;
+    if (authId) return authId;
+
+    const stored = localStorage.getItem("voterId");
+    if (stored) return stored;
+
+    const newId = generateUUID();
+    localStorage.setItem("voterId", newId);
+    return newId;
   }
 
-  const selectCandidate = (optionId: string) => {
-    setSelectedOptionId(optionId);
-    setVoteMsg(null);
-  };
-
+  // 🗳️ Vote selection
   const toggleCandidate = (optionId: string) => {
     setVoteMsg(null);
     if (campaign?.vote_type === "preferential") {
@@ -199,14 +160,15 @@ export default function PollDetailPage() {
     }
   };
 
+  // 🗳️ Cast vote
   const castVote = async () => {
     if (selectedOptionIds.length === 0) {
       setVoteMsg("Please select at least one candidate.");
       return;
     }
 
-    setVoteMsg(null);
     setSubmitting("yes");
+    const voterId = await getVoterId();
 
     try {
       if (votedOptionId) {
@@ -214,45 +176,32 @@ export default function PollDetailPage() {
         return;
       }
 
-      const voterId = await getVoterId();
-
       if (campaign?.vote_type === "single") {
-        // Single vote
-        const payload = {
+        await supabase.from("votes_single").insert({
           campaign_id: id,
           option_id: selectedOptionIds[0],
           voter_id: voterId,
           created_at: new Date().toISOString(),
-        };
-        const { error } = await supabase.from("votes_single").insert(payload);
-        if (error) throw error;
-        setVotedOptionId(selectedOptionIds[0]);
+        });
       } else {
-        // Preferential voting - insert multiple rows with rank
+        const maxPoints = selectedOptionIds.length;
         const payloads = selectedOptionIds.map((optId, i) => ({
           campaign_id: id,
           option_id: optId,
           voter_id: voterId,
-          rank: i + 1, // order of selection
+          rank: i + 1,
+          points: maxPoints - i,
           created_at: new Date().toISOString(),
         }));
-        const { error } = await supabase.from("votes_preferential").insert(payloads);
-        if (error) throw error;
-        setVotedOptionId("done"); // marker that vote is done
+        await supabase.from("votes_preferential").insert(payloads);
       }
 
       setVoteMsg("Vote submitted successfully!");
+      setVotedOptionId(selectedOptionIds[0]);
       setSelectedOptionIds([]);
-
-      try {
-        localStorage.removeItem(`options-${id}`);
-      } catch {}
+      localStorage.removeItem(`options-${id}`);
     } catch (e) {
-      const msg =
-        e && typeof e === "object" && "message" in e
-          ? String((e as { message?: unknown }).message)
-          : "Failed to submit vote";
-      setVoteMsg(msg);
+      setVoteMsg("Failed to submit vote");
     } finally {
       setSubmitting(null);
     }
@@ -261,7 +210,7 @@ export default function PollDetailPage() {
   return (
     <div className="min-h-screen bg-background text-foreground px-6 py-8">
       <h1 className="text-foreground text-2xl font-semibold mb-6">Cast Your Vote</h1>
-      
+
       {campaignLoading ? (
         <>
           <div className="h-6 bg-muted animate-pulse rounded mb-2"></div>
@@ -310,49 +259,61 @@ export default function PollDetailPage() {
               </div>
             </>
           ) : (
-            // Voting process
             <>
               <p className="text-sm text-muted-foreground mb-4">
-                {selectedOptionId ? "Confirm your selection" : "Choose a candidate"}
+                {selectedOptionIds.length > 0 ? "Confirm your selection" : "Choose your candidates"}
               </p>
-              <div className="space-y-2">
-                {loading ? (
-                  <>
-                    <div className="h-10 bg-muted animate-pulse rounded"></div>
-                    <div className="h-10 bg-muted animate-pulse rounded"></div>
-                    <div className="h-10 bg-muted animate-pulse rounded"></div>
-                    <div className="h-10 bg-muted animate-pulse rounded"></div>
-                  </>
-                ) : options.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No options available yet.</div>
-                ) : (
-                  <>
-                    {voteMsg && (
-                      <div className={`text-xs ${voteMsg.includes('successfully') ? 'text-green-600' : 'text-red-600'}`}>
-                        {voteMsg}
-                      </div>
-                    )}
-                    {options.map((o) => (
-                      <button
-                        key={o.id}
-                        onClick={() => toggleCandidate(o.id)}
-                        className={`w-full text-left rounded-md px-4 py-2 text-sm border transition-colors ${
-                          selectedOptionIds.includes(o.id)
-                            ? "bg-primary/20 border-primary/60 ring-2 ring-primary/30"
-                            : "bg-card border-border hover:bg-muted/50"
-                        }`}
-                      >
-                        <div className="font-medium">{o.label}</div>
-                        {o.description && <div className="text-xs text-muted-foreground">{o.description}</div>}
-                      </button>
-                    ))}
-                  </>
-                )}
-              </div>
-              
+
+              {campaign?.vote_type === "preferential" ? (
+                <PreferentialPoll
+                  options={options.map(o => o.label)}
+                  onChange={(ranking) =>
+                    setSelectedOptionIds(
+                      options
+                        .filter(o => ranking.includes(o.label))
+                        .map(o => o.id)
+                    )
+                  }
+                />
+              ) : (
+                <div className="space-y-2">
+                  {loading ? (
+                    <>
+                      <div className="h-10 bg-muted animate-pulse rounded"></div>
+                      <div className="h-10 bg-muted animate-pulse rounded"></div>
+                      <div className="h-10 bg-muted animate-pulse rounded"></div>
+                      <div className="h-10 bg-muted animate-pulse rounded"></div>
+                    </>
+                  ) : options.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No options available yet.</div>
+                  ) : (
+                    <>
+                      {voteMsg && (
+                        <div className={`text-xs ${voteMsg.includes("successfully") ? "text-green-600" : "text-red-600"}`}>
+                          {voteMsg}
+                        </div>
+                      )}
+                      {options.map((o) => (
+                        <button
+                          key={o.id}
+                          onClick={() => toggleCandidate(o.id)}
+                          className={`w-full text-left rounded-md px-4 py-2 text-sm border transition-colors ${
+                            selectedOptionIds.includes(o.id)
+                              ? "bg-primary/20 border-primary/60 ring-2 ring-primary/30"
+                              : "bg-card border-border hover:bg-muted/50"
+                          }`}
+                        >
+                          <div className="font-medium">{o.label}</div>
+                          {o.description && <div className="text-xs text-muted-foreground">{o.description}</div>}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
             </>
           )}
-          
+
           <div className="mt-4 flex justify-end gap-3">
             {/* Submit button appears only when a candidate is selected */}
             {selectedOptionIds.length > 0 && (
@@ -361,11 +322,15 @@ export default function PollDetailPage() {
                 disabled={submitting !== null}
                 className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? "Submitting..." : campaign?.vote_type === "preferential" ? "Submit Preferences" : "Submit Vote"}
+                {submitting
+                  ? "Submitting..."
+                  : campaign?.vote_type === "preferential"
+                  ? "Submit Preferences"
+                  : "Submit Vote"}
               </button>
             )}
 
-            <button 
+            <button
               className="rounded-md bg-secondary text-secondary-foreground px-4 py-2 text-sm"
               onClick={() => router.push("/polling-menu")}
             >
@@ -374,6 +339,7 @@ export default function PollDetailPage() {
           </div>
         </div>
       ) : (
+        // Admin view
         <div className="rounded-xl border border-border bg-card p-6">
           <p className="text-sm text-muted-foreground mb-4">Admin view: current votes (placeholder)</p>
           <div className="text-sm">
@@ -398,9 +364,7 @@ function formatDateRange(starts?: string | null, ends?: string | null) {
   const fmt = (iso?: string | null) => {
     if (!iso) return null;
     const d = new Date(iso);
-    const date = d.toLocaleDateString("en-GB");
-    const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-    return `${date} ${time}`;
+    return `${d.toLocaleDateString("en-GB")} ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
   };
   const a = fmt(starts);
   const b = fmt(ends);
@@ -409,5 +373,3 @@ function formatDateRange(starts?: string | null, ends?: string | null) {
   if (b) return `Ends: ${b}`;
   return "";
 }
-
-

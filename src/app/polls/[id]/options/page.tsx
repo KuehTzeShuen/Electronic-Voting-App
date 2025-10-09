@@ -171,6 +171,9 @@ export default function ManageOptionsPage() {
               <Button type="submit" disabled={saving}>{saving ? "Adding..." : "Add option"}</Button>
               <Button type="button" variant="secondary" onClick={() => router.push("/polling-menu")}>Back to polling menu</Button>
             </div>
+            <div>
+                <a href="#" className="text-xs text-destructive hover:underline">Delete</a>
+              </div>
           </form>
 
           <div className="space-y-2">
@@ -182,6 +185,7 @@ export default function ManageOptionsPage() {
                 <div className="text-sm font-medium text-foreground">{o.label}</div>
                 {o.description && <div className="text-xs text-muted-foreground mt-0.5">{o.description}</div>}
               </div>
+              
             ))}
           </div>
         </CardContent>

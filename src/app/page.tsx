@@ -136,7 +136,7 @@ export default function LoginPage() {
               {loading ? "Checking..." : "Login"}
             </Button>
             <p className="text-xs text-muted-foreground">
-              Don&apos;t have an account? <a href="/signup" className="underline">Sign up</a>
+              Don&apos;t have an account? <button type="button" onClick={() => router.push('/signup')} className="underline">Sign up</button>
             </p>
           </form>
         </CardContent>

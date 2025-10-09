@@ -20,7 +20,6 @@ type Campaign = {
 export default function CompletedPollsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [completedCampaigns, setCompletedCampaigns] = useState<Campaign[]>([]);
-  const [role, setRole] = useState<"student" | "admin" | null>(null);
   const [roleLoading, setRoleLoading] = useState(true);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const router = useRouter();
@@ -35,10 +34,12 @@ export default function CompletedPollsPage() {
     }
   })();
 
+  const [role, setRole] = useState<"student" | "admin" | null>(initialRole);
+
   const [profileOpen, setProfileOpen] = useState(false);
   const [profile, setProfile] = useState<{ email: string; role: "student" | "admin"; first_name?: string; last_name?: string; student_id?: string; gender?: string; ug_pg?: string; dob?: string; discipline?: string; location?: string; grade?: string } | null>(null);
 
-  // Load role on mount
+  // Load profile on mount
   React.useEffect(() => {
     (async () => {
       setRoleLoading(true);
@@ -46,8 +47,6 @@ export default function CompletedPollsPage() {
         const stored = localStorage.getItem("appRole");
         const storedEmail = localStorage.getItem("appEmail");
         if (stored === "admin" || stored === "student") {
-          setRole(stored);
-          
           // Load detailed profile information immediately
           if (storedEmail) {
             try {

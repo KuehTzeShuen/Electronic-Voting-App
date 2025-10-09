@@ -25,15 +25,15 @@ export default function Navbar() {
   const links = [
     { name: "Home", href: "/" },
     { name: "About", href: "/about" },
-    { name: "Projects", href: "/projects" },
-    { name: "Contact", href: "/contact" },
+    { name: "Settings", href: "/settings" },
+    { name: "Help", href: "/help" },
   ];
 
   return (
     <nav className="flex items-center justify-between px-6 py-3 border-b bg-background/80 backdrop-blur-md">
       {/* Logo */}
       <Link href="/" className="font-bold text-xl">
-        PollMate
+        MySite
       </Link>
 
       {/* Navigation Links */}
@@ -61,10 +61,10 @@ export default function Navbar() {
         {/* Example: if logged in */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            {/* <Avatar className="cursor-pointer">
+            <Avatar className="cursor-pointer">
               <AvatarImage src="/avatar.png" alt="User avatar" />
               <AvatarFallback>SK</AvatarFallback>
-            </Avatar> */}
+            </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>

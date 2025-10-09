@@ -22,6 +22,7 @@ type Campaign = {
 
 export default function OngoingPollsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [ongoingCampaigns, setOngoingCampaigns] = useState<Campaign[]>([]);
   const [codes, setCodes] = useState<Record<string, string>>({});
   const initialRole = ((): "student" | "admin" | null => {
     if (typeof window === "undefined") return null;
@@ -36,7 +37,19 @@ export default function OngoingPollsPage() {
   const [roleLoading, setRoleLoading] = useState<boolean>(true);
   const [campaignsLoading, setCampaignsLoading] = useState<boolean>(true);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [profile, setProfile] = useState<{ email: string | null; first_name: string | null; last_name: string | null; student_id: string | null; role: string | null } | null>(null);
+  const [profile, setProfile] = useState<{ 
+    email: string | null; 
+    first_name: string | null; 
+    last_name: string | null; 
+    student_id: string | null; 
+    gender: string | null;
+    ug_pg: string | null;
+    dob: string | null;
+    discipline: number | null;
+    location: number | null;
+    grade: string | null;
+    role: string | null 
+  } | null>(null);
   // Admin add form moved to /polls/new; local inputs removed
 
   // const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
@@ -104,7 +117,7 @@ export default function OngoingPollsPage() {
         try {
           email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
           storedRole = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
-        } catch (_) {
+        } catch {
           // localStorage not available
         }
         
@@ -173,7 +186,19 @@ export default function OngoingPollsPage() {
           .limit(100);
         
         if (Array.isArray(data)) {
-          setCampaigns(data as Campaign[]);
+          const allCampaigns = data as Campaign[];
+          setCampaigns(allCampaigns);
+          
+          // Separate ongoing and completed polls
+          const now = new Date().toISOString();
+          const ongoing = allCampaigns.filter(c => 
+            c.ends_at && new Date(c.ends_at).toISOString() > now
+          );
+          // const completed = allCampaigns.filter(c => 
+          //   c.ends_at && new Date(c.ends_at).toISOString() <= now
+          // );
+          
+          setOngoingCampaigns(ongoing);
         }
       } finally {
         setCampaignsLoading(false);
@@ -185,23 +210,53 @@ export default function OngoingPollsPage() {
     const nextOpen = !profileOpen;
     setProfileOpen(nextOpen);
     if (nextOpen && !profile) {
-      // Get email from localStorage (same as authentication check)
-      let email: string | null = null;
+      let userRow: { 
+        email: string | null; 
+        first_name: string | null; 
+        last_name: string | null; 
+        student_id: string | null; 
+        gender: string | null;
+        ug_pg: string | null;
+        dob: string | null;
+        discipline: number | null;
+        location: number | null;
+        grade: string | null;
+        role: string | null 
+      } | null = null;
+      
+      // First try to get user from Supabase auth
       try {
-        email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
-      } catch (_) {
-        // localStorage not available
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (!authError && user?.id) {
+          const { data } = await supabase
+            .from("users")
+            .select("email, first_name, last_name, student_id, gender, ug_pg, dob, discipline, location, grade, role")
+            .eq("auth_id", user.id)
+            .limit(1)
+            .maybeSingle();
+          if (data) userRow = data;
+        }
+      } catch {}
+      
+      // Fallback to localStorage email if auth user not found
+      if (!userRow) {
+        let email: string | null = null;
+        try {
+          email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
+        } catch {
+          // localStorage not available
+        }
+        if (email) {
+          const { data } = await supabase
+            .from("users")
+            .select("email, first_name, last_name, student_id, gender, ug_pg, dob, discipline, location, grade, role")
+            .eq("email", email)
+            .limit(1)
+            .maybeSingle();
+          if (data) userRow = data;
+        }
       }
-      let userRow: { first_name: string | null; last_name: string | null; student_id: string | null; role: string | null } | null = null;
-      if (email) {
-        const { data } = await supabase
-          .from("users")
-          .select("first_name, last_name, student_id, role")
-          .eq("email", email)
-          .limit(1)
-          .maybeSingle();
-        if (data) userRow = data as { first_name: string | null; last_name: string | null; student_id: string | null; role: string | null };
-      }
+      
       // Role should reflect the user's chosen session role only (not DB),
       // so prefer localStorage appRole, falling back to current in-memory role.
       let resolvedRole: string | null = null;
@@ -210,11 +265,18 @@ export default function OngoingPollsPage() {
         if (stored === "admin" || stored === "student") resolvedRole = stored;
       } catch {}
       if (!resolvedRole) resolvedRole = role;
+      
       setProfile({
-        email,
+        email: userRow?.email ?? null,
         first_name: userRow?.first_name ?? null,
         last_name: userRow?.last_name ?? null,
         student_id: userRow?.student_id ?? null,
+        gender: userRow?.gender ?? null,
+        ug_pg: userRow?.ug_pg ?? null,
+        dob: userRow?.dob ?? null,
+        discipline: userRow?.discipline ?? null,
+        location: userRow?.location ?? null,
+        grade: userRow?.grade ?? null,
         role: resolvedRole,
       });
     }
@@ -251,6 +313,13 @@ export default function OngoingPollsPage() {
           {!roleLoading && role === "admin" && (
             <Button size="sm" onClick={() => router.push("/polls/new")}>Add poll</Button>
           )}
+          <Button 
+            size="sm" 
+            variant="secondary" 
+            onClick={() => router.push("/polling-menu/completed")}
+          >
+            View Completed
+          </Button>
           <Button size="sm" variant="secondary" onClick={toggleProfile}>Profile</Button>
         </div>
       </header>
@@ -260,10 +329,16 @@ export default function OngoingPollsPage() {
           <div className="fixed inset-0 z-[999] bg-black/40" onClick={toggleProfile} />
           <div className="fixed right-6 top-20 z-[1000] w-64 rounded-md border border-border bg-card p-3 shadow-lg">
             <div className="text-sm font-medium text-foreground mb-2">Profile</div>
-            <div className="text-xs text-muted-foreground space-y-1">
+            <div className="text-xs text-muted-foreground space-y-1 max-h-80 overflow-y-auto">
               <div><span className="font-medium text-foreground">Email:</span> {profile?.email ?? "-"}</div>
               <div><span className="font-medium text-foreground">Name:</span> {(profile?.first_name ?? "-") + " " + (profile?.last_name ?? "")}</div>
               <div><span className="font-medium text-foreground">Student ID:</span> {profile?.student_id ?? "-"}</div>
+              <div><span className="font-medium text-foreground">Gender:</span> {profile?.gender ?? "-"}</div>
+              <div><span className="font-medium text-foreground">Level:</span> {profile?.ug_pg ?? "-"}</div>
+              <div><span className="font-medium text-foreground">Date of Birth:</span> {profile?.dob ? new Date(profile.dob).toLocaleDateString() : "-"}</div>
+              <div><span className="font-medium text-foreground">Discipline:</span> {profile?.discipline ?? "-"}</div>
+              <div><span className="font-medium text-foreground">Location:</span> {profile?.location ?? "-"}</div>
+              <div><span className="font-medium text-foreground">Grade:</span> {profile?.grade ?? "-"}</div>
               <div><span className="font-medium text-foreground">Role:</span> {profile?.role ?? "-"}</div>
             </div>
             <div className="mt-3 flex justify-end gap-2">
@@ -272,7 +347,7 @@ export default function OngoingPollsPage() {
                 try {
                   localStorage.removeItem("appEmail");
                   localStorage.removeItem("appRole");
-                } catch (_) {
+                } catch {
                   // localStorage not available
                 }
                 router.push("/");
@@ -284,7 +359,7 @@ export default function OngoingPollsPage() {
 
       {/* Admin add form moved to /polls/new */}
 
-      <main className="w-full px-4 pt-6 pb-10 space-y-4 relative z-10">
+      <main className="w-full px-4 pt-6 pb-10 space-y-6 relative z-10">
         {(roleLoading || campaignsLoading) && (
           <div className="w-full max-w-2xl mx-auto">
             {Array.from({ length: campaigns.length > 0 ? campaigns.length : 3 }).map((_, index) => (
@@ -292,35 +367,53 @@ export default function OngoingPollsPage() {
             ))}
           </div>
         )}
-        {!roleLoading && !campaignsLoading && campaigns.map((c) => (
-          <Card key={c.id} className="w-full max-w-2xl mx-auto border-muted/40 bg-card/60 backdrop-blur">
-            <CardHeader className="pb-0"></CardHeader>
-            <CardContent>
-              {c.club && <div className="text-sm text-muted-foreground font-medium">{c.club}</div>}
-              <div className="text-foreground text-lg font-semibold mt-1">{c.title}</div>
-              {c.description && <div className="text-muted-foreground text-xs mt-1">{c.description}</div>}
-              {role === "student" ? (
-                <div className="flex items-center gap-2 mt-4">
-                  <Input
-                    type="text"
-                    placeholder="Enter code"
-                    value={codes[c.id] || ""}
-                    onChange={e => handleCodeChange(c.id, e.target.value)}
-                  />
-                  <Button size="sm" onClick={() => handleJoin(c.id)} disabled={(codes[c.id] || "").trim() === ""}>
-                    Join
-                  </Button>
-                </div>
-              ) : (
-              <div className="flex items-center gap-2 mt-4">
-                  <Button size="sm" variant="secondary" onClick={() => router.push(`/poll/${c.id}/results`)}>
-                    View votes
-                  </Button>
+        
+        {!roleLoading && !campaignsLoading && (
+          <div className="w-full max-w-2xl mx-auto">
+            {ongoingCampaigns.length > 0 ? (
+              <div className="space-y-4">
+                {ongoingCampaigns.map((c) => (
+                  <Card key={c.id} className="w-full border-muted/40 bg-card/60 backdrop-blur">
+                    <CardHeader className="pb-0"></CardHeader>
+                    <CardContent>
+                      {c.club && <div className="text-sm text-muted-foreground font-medium">{c.club}</div>}
+                      <div className="text-foreground text-lg font-semibold mt-1">{c.title}</div>
+                      {c.description && <div className="text-muted-foreground text-xs mt-1">{c.description}</div>}
+                      {c.ends_at && (
+                        <div className="text-xs text-muted-foreground mt-2">
+                          Ends: {new Date(c.ends_at).toLocaleDateString()} at {new Date(c.ends_at).toLocaleTimeString()}
+                        </div>
+                      )}
+                      {role === "student" ? (
+                        <div className="flex items-center gap-2 mt-4">
+                          <Input
+                            type="text"
+                            placeholder="Enter code"
+                            value={codes[c.id] || ""}
+                            onChange={e => handleCodeChange(c.id, e.target.value)}
+                          />
+                          <Button size="sm" onClick={() => handleJoin(c.id)} disabled={(codes[c.id] || "").trim() === ""}>
+                            Join
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 mt-4">
+                          <Button size="sm" variant="secondary" onClick={() => router.push(`/poll/${c.id}/results`)}>
+                            View votes
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No ongoing polls at the moment.
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

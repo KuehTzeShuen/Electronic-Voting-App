@@ -1,6 +1,6 @@
 "use client";
 
-import { generateUUID } from "@/lib/uuid";
+// import { generateUUID } from "@/lib/uuid";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -16,9 +16,11 @@ export default function PollDetailPage() {
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [voteMsg, setVoteMsg] = useState<string | null>(null);
   const [votedOptionId, setVotedOptionId] = useState<string | null>(null);
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [votedOptions, setVotedOptions] = useState<{id: string, label: string, rank?: number}[]>([]);
+  const [selectedOptionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [campaignLoading, setCampaignLoading] = useState(true);
+  // const [showReward, setShowReward] = useState(false);
 
   const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
 
@@ -40,7 +42,7 @@ export default function PollDetailPage() {
             return; // Use cached data
           }
         }
-      } catch (_) {
+      } catch {
         // Cache invalid, continue to fetch
       }
 
@@ -52,7 +54,7 @@ export default function PollDetailPage() {
         .maybeSingle();
       
       if (camp) {
-        const campaignData = camp as { title: string; description: string | null; club: string | null; starts_at: string | null; ends_at: string | null };
+        const campaignData = camp as { title: string; description: string | null; club: string | null; starts_at: string | null; ends_at: string | null; vote_type?: "single" | "preferential" };
         setCampaign(campaignData);
         // Cache the data
         try {
@@ -60,7 +62,7 @@ export default function PollDetailPage() {
             data: campaignData,
             timestamp: Date.now()
           }));
-        } catch (_) {
+        } catch {
           // Cache failed, but data is still loaded
         }
       }
@@ -78,7 +80,7 @@ export default function PollDetailPage() {
       try {
         email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
         storedRole = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
-      } catch (_) {
+      } catch {
         // localStorage not available
       }
       
@@ -124,7 +126,7 @@ export default function PollDetailPage() {
           // No cache, fetch fresh data
           await fetchAndCacheOptions();
         }
-      } catch (_) {
+      } catch {
         // Cache invalid, fetch fresh data
         await fetchAndCacheOptions();
       }
@@ -145,48 +147,109 @@ export default function PollDetailPage() {
               data: optionsData,
               timestamp: Date.now()
             }));
-          } catch (_) {
+          } catch {
             // Cache failed, but data is still loaded
           }
         }
       }
 
       // Check if this voter already voted in this campaign
-      const voterId = await getVoterId();
-      const { data: existing } = await supabase
-        .from("votes_single")
-        .select("option_id")
-        .eq("campaign_id", id)
-        .eq("voter_id", voterId)
-        .maybeSingle();
-      if (existing?.option_id) setVotedOptionId(existing.option_id as string);
+      let voterId: string;
+      try {
+        voterId = await getVoterId();
+      } catch (error) {
+        console.error("Authentication error:", error);
+        setLoading(false);
+        return;
+      }
+      
+      // Check for existing vote based on campaign type
+      if (campaign?.vote_type === "single") {
+        const { data: existing } = await supabase
+          .from("votes_single")
+          .select("option_id")
+          .eq("campaign_id", id)
+          .eq("voter_id", voterId)
+          .maybeSingle();
+        
+        if (existing?.option_id) {
+          setVotedOptionId(existing.option_id as string);
+          // Find the option details for display
+          const option = options.find(o => o.id === existing.option_id);
+          if (option) {
+            setVotedOptions([{id: option.id, label: option.label}]);
+          }
+        }
+      } else {
+        // Check for preferential votes
+        const { data: existing } = await supabase
+          .from("votes_preferential")
+          .select("option_id, rank")
+          .eq("campaign_id", id)
+          .eq("voter_id", voterId)
+          .order("rank", { ascending: true });
+        
+        if (existing && existing.length > 0) {
+          setVotedOptionId("done");
+          // Map the votes to option details with ranks
+          const votedOptionsWithDetails = existing.map(vote => {
+            const option = options.find(o => o.id === vote.option_id);
+            return {
+              id: vote.option_id,
+              label: option?.label || vote.option_id,
+              rank: vote.rank
+            };
+          });
+          setVotedOptions(votedOptionsWithDetails);
+        }
+      }
       setLoading(false);
     })();
-  }, [id, router]);
+  }, [id, router, campaign?.vote_type, options]);
 
   async function getVoterId(): Promise<string> {
-    // Prefer Supabase auth user id when available
-    try {
-      const { data: session } = await supabase.auth.getUser();
-      const authId = (session.user?.id as string | undefined) || null;
-      if (authId) return authId;
-    } catch {}
-    // Fallback to a persistent client id
-    try {
-      const stored = localStorage.getItem("voterId");
-      if (stored) return stored;
-      const created = generateUUID();
-      localStorage.setItem("voterId", created);
-      return created;
-    } catch {
-      return generateUUID();
+    // Check localStorage for authentication (your app's auth system)
+    const appEmail = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
+    const appRole = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
+    
+    if (!appEmail || !appRole) {
+      throw new Error("You must be logged in to vote. Please sign in first.");
     }
+
+    // Try to get the user's auth_id from the users table using email
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("auth_id")
+      .eq("email", appEmail)
+      .eq("role", appRole)
+      .single();
+    
+    if (userError || !userData?.auth_id) {
+      // If we can't find the user in the database, create a demo ID based on email
+      return `user-${appEmail.replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}`;
+    }
+
+    return userData.auth_id;
   }
 
-  const selectCandidate = (optionId: string) => {
-    setSelectedOptionId(optionId);
-    setVoteMsg(null);
-  };
+  async function getNextVoteId(tableName: 'votes_single' | 'votes_preferential'): Promise<number> {
+    // Get the highest current ID from the votes table
+    const { data, error } = await supabase
+      .from(tableName)
+      .select('id')
+      .order('id', { ascending: false })
+      .limit(1);
+    
+    if (error) throw error;
+    
+    // If no records exist, start with ID 1, otherwise use highest ID + 1
+    return data && data.length > 0 ? (data[0].id as number) + 1 : 1;
+  }
+
+  // const selectCandidate = (optionId: string) => {
+  //   setSelectedOptionId(optionId);
+  //   setVoteMsg(null);
+  // };
 
   const toggleCandidate = (optionId: string) => {
     setVoteMsg(null);
@@ -198,6 +261,7 @@ export default function PollDetailPage() {
       setSelectedOptionIds([optionId]);
     }
   };
+
 
   const castVote = async () => {
     if (selectedOptionIds.length === 0) {
@@ -214,34 +278,101 @@ export default function PollDetailPage() {
         return;
       }
 
-      const voterId = await getVoterId();
+      let voterId: string;
+      try {
+        voterId = await getVoterId();
+      } catch (error) {
+        setVoteMsg(error instanceof Error ? error.message : "Authentication error. Please log in again.");
+        return;
+      }
 
+      console.log('Campaign vote_type:', campaign?.vote_type);
+      console.log('Campaign object:', campaign);
+      console.log('Selected option IDs:', selectedOptionIds);
+      console.log('Selected option ID (singular):', selectedOptionId);
       if (campaign?.vote_type === "single") {
-        // Single vote
+        // Single vote - check if user already voted first
+        const { data: existingVote, error: checkError } = await supabase
+          .from("votes_single")
+          .select("option_id")
+          .eq("campaign_id", id)
+          .eq("voter_id", voterId)
+          .maybeSingle();
+        
+        if (checkError) throw checkError;
+        if (existingVote) {
+          setVoteMsg("You have already voted in this poll.");
+          setVotedOptionId(existingVote.option_id);
+          return;
+        }
+
+        // Get next available ID and insert vote
+        const nextId = await getNextVoteId('votes_single');
+        const optionId = selectedOptionId || selectedOptionIds[0];
         const payload = {
+          id: nextId,
           campaign_id: id,
-          option_id: selectedOptionIds[0],
+          option_id: optionId,
           voter_id: voterId,
           created_at: new Date().toISOString(),
         };
+        console.log('Inserting into votes_single table:', payload);
         const { error } = await supabase.from("votes_single").insert(payload);
-        if (error) throw error;
-        setVotedOptionId(selectedOptionIds[0]);
+        if (error) {
+          console.error('Error inserting into votes_single:', error);
+          throw error;
+        }
+        setVotedOptionId(optionId);
+        // Set voted options for display
+        const votedOption = options.find(o => o.id === optionId);
+        if (votedOption) {
+          setVotedOptions([{id: votedOption.id, label: votedOption.label}]);
+        }
       } else {
-        // Preferential voting - insert multiple rows with rank
+        // Preferential voting - check if user already voted first
+        const { data: existingVotes, error: checkError } = await supabase
+          .from("votes_preferential")
+          .select("option_id")
+          .eq("campaign_id", id)
+          .eq("voter_id", voterId)
+          .limit(1);
+        
+        if (checkError) throw checkError;
+        if (existingVotes && existingVotes.length > 0) {
+          setVoteMsg("You have already voted in this poll.");
+          setVotedOptionId("done");
+          return;
+        }
+
+        // Get next available IDs and insert preferential votes with rank
+        const baseId = await getNextVoteId('votes_preferential');
         const payloads = selectedOptionIds.map((optId, i) => ({
+          id: baseId + i, // Sequential IDs starting from baseId
           campaign_id: id,
           option_id: optId,
           voter_id: voterId,
           rank: i + 1, // order of selection
           created_at: new Date().toISOString(),
         }));
+        console.log('Inserting into votes_preferential table:', payloads);
         const { error } = await supabase.from("votes_preferential").insert(payloads);
-        if (error) throw error;
+        if (error) {
+          console.error('Error inserting into votes_preferential:', error);
+          throw error;
+        }
         setVotedOptionId("done"); // marker that vote is done
+        // Set voted options for display with ranks
+        const votedOptionsWithRanks = selectedOptionIds.map((optionId, index) => {
+          const option = options.find(o => o.id === optionId);
+          return {
+            id: optionId,
+            label: option?.label || optionId,
+            rank: index + 1
+          };
+        });
+        setVotedOptions(votedOptionsWithRanks);
       }
 
-      setVoteMsg("Vote submitted successfully!");
       setSelectedOptionIds([]);
 
       try {
@@ -287,75 +418,86 @@ export default function PollDetailPage() {
 
       {role === "student" ? (
         <div className="rounded-xl border border-border bg-card p-6">
-          {votedOptionId ? (
-            // Already voted - show results
-            <>
-              <p className="text-sm text-muted-foreground mb-4">Your vote has been submitted</p>
-              <div className="space-y-2">
-                {options.map((o) => (
-                  <div
-                    key={o.id}
-                    className={`w-full text-left rounded-md px-4 py-2 text-sm border ${
-                      o.id === votedOptionId
-                        ? "bg-primary/15 border-primary/40"
-                        : "bg-card border-border"
-                    }`}
-                  >
-                    <div className="font-medium">
-                      {o.label} {o.id === votedOptionId && <span className="text-xs text-muted-foreground">(your vote)</span>}
-                    </div>
-                    {o.description && <div className="text-xs text-muted-foreground">{o.description}</div>}
+          <p className="text-sm text-muted-foreground mb-4">
+            {selectedOptionId ? "Confirm your selection" : "Choose a candidate"}
+          </p>
+          <div className="space-y-2">
+            {loading ? (
+              <>
+                <div className="h-10 bg-muted animate-pulse rounded"></div>
+                <div className="h-10 bg-muted animate-pulse rounded"></div>
+                <div className="h-10 bg-muted animate-pulse rounded"></div>
+                <div className="h-10 bg-muted animate-pulse rounded"></div>
+              </>
+            ) : options.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No options available yet.</div>
+            ) : (
+              <>
+                {voteMsg && (
+                  <div className={`text-xs ${voteMsg.includes('successfully') ? 'text-green-600' : 'text-red-600'}`}>
+                    {voteMsg}
                   </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            // Voting process
-            <>
-              <p className="text-sm text-muted-foreground mb-4">
-                {selectedOptionId ? "Confirm your selection" : "Choose a candidate"}
-              </p>
-              <div className="space-y-2">
-                {loading ? (
-                  <>
-                    <div className="h-10 bg-muted animate-pulse rounded"></div>
-                    <div className="h-10 bg-muted animate-pulse rounded"></div>
-                    <div className="h-10 bg-muted animate-pulse rounded"></div>
-                    <div className="h-10 bg-muted animate-pulse rounded"></div>
-                  </>
-                ) : options.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No options available yet.</div>
-                ) : (
-                  <>
-                    {voteMsg && (
-                      <div className={`text-xs ${voteMsg.includes('successfully') ? 'text-green-600' : 'text-red-600'}`}>
-                        {voteMsg}
-                      </div>
-                    )}
-                    {options.map((o) => (
-                      <button
-                        key={o.id}
-                        onClick={() => toggleCandidate(o.id)}
-                        className={`w-full text-left rounded-md px-4 py-2 text-sm border transition-colors ${
-                          selectedOptionIds.includes(o.id)
-                            ? "bg-primary/20 border-primary/60 ring-2 ring-primary/30"
-                            : "bg-card border-border hover:bg-muted/50"
-                        }`}
-                      >
-                        <div className="font-medium">{o.label}</div>
-                        {o.description && <div className="text-xs text-muted-foreground">{o.description}</div>}
-                      </button>
-                    ))}
-                  </>
                 )}
-              </div>
-              
-            </>
-          )}
+                {options.map((o) => (
+                  <button
+                    key={o.id}
+                    onClick={() => toggleCandidate(o.id)}
+                    disabled={votedOptionId !== null}
+                    className={`w-full text-left rounded-md px-4 py-2 text-sm border transition-colors ${
+                      selectedOptionIds.includes(o.id) || votedOptions.some(vo => vo.id === o.id)
+                        ? "bg-primary/20 border-primary/60 ring-2 ring-primary/30"
+                        : "bg-card border-border hover:bg-muted/50"
+                    } ${votedOptionId !== null ? 'cursor-not-allowed' : ''}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">
+                          {o.label}
+                          {campaign?.vote_type === "single" && votedOptions.some(vo => vo.id === o.id) && (
+                            <span className="text-xs text-muted-foreground ml-2">(your vote)</span>
+                          )}
+                        </div>
+                        {o.description && <div className="text-xs text-muted-foreground">{o.description}</div>}
+                      </div>
+                      {campaign?.vote_type === "preferential" && (
+                        <div className="ml-4 flex-shrink-0">
+                          {selectedOptionIds.includes(o.id) && (
+                            <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium">
+                              {selectedOptionIds.indexOf(o.id) + 1}
+                            </div>
+                          )}
+                          {votedOptions.some(vo => vo.id === o.id) && !selectedOptionIds.includes(o.id) && (
+                            <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium">
+                              {votedOptions.find(vo => vo.id === o.id)?.rank}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
           
           <div className="mt-4 flex justify-end gap-3">
-            {/* Submit button appears only when a candidate is selected */}
-            {selectedOptionIds.length > 0 && (
+            {/* Submit button */}
+            {votedOptionId ? (
+              <>
+                <button
+                  disabled={true}
+                  className="rounded-md bg-gray-300 text-gray-500 px-4 py-2 text-sm cursor-not-allowed"
+                >
+                  Vote Submitted
+                </button>
+                <button 
+                  className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm hover:bg-primary/90"
+                  onClick={() => router.push(`/poll/${id}/incentive`)}
+                >
+                  View Incentives
+                </button>
+              </>
+            ) : selectedOptionIds.length > 0 ? (
               <button
                 onClick={castVote}
                 disabled={submitting !== null}
@@ -363,7 +505,7 @@ export default function PollDetailPage() {
               >
                 {submitting ? "Submitting..." : campaign?.vote_type === "preferential" ? "Submit Preferences" : "Submit Vote"}
               </button>
-            )}
+            ) : null}
 
             <button 
               className="rounded-md bg-secondary text-secondary-foreground px-4 py-2 text-sm"
@@ -390,6 +532,7 @@ export default function PollDetailPage() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

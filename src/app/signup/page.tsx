@@ -14,6 +14,12 @@ export default function SignupPage() {
   const [studentId, setStudentId] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [gender, setGender] = useState<"male" | "female">("male");
+  const [ugPg, setUgPg] = useState<"UG" | "PG">("UG");
+  const [dob, setDob] = useState("");
+  const [discipline, setDiscipline] = useState<number>(1);
+  const [location, setLocation] = useState<number>(1);
+  const [grade, setGrade] = useState<"N" | "P" | "C" | "D" | "HD">("N");
   const [role, setRole] = useState<"student" | "admin">("student");
   const [step, setStep] = useState<"email" | "otp" | "details">("email");
   const [loading, setLoading] = useState(false);
@@ -88,15 +94,36 @@ export default function SignupPage() {
     setError(null);
     setLoading(true);
     try {
+      // Get the current authenticated user from Supabase auth
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error("No authenticated user found. Please complete email verification first.");
+
       const { error: insertError } = await supabase.from("users").insert({
+        auth_id: user.id, // Use Supabase auth ID
         student_id: studentId,
         first_name: firstName,
         last_name: lastName,
         email,
+        gender,
+        ug_pg: ugPg,
+        dob,
+        discipline,
+        location,
+        grade,
         role,
         created_at: new Date().toISOString(),
       });
       if (insertError) throw insertError;
+      
+      // Store auth session info for the app
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("appRole", role);
+          localStorage.setItem("appEmail", email);
+        }
+      } catch {}
+      
       router.push("/polling-menu");
     } catch (err: unknown) {
       setError(getErrorMessage(err) || "Failed to save details");
@@ -169,24 +196,124 @@ export default function SignupPage() {
       )}
 
       {step === "details" && (
-        <Card className="w-full max-w-xs border-muted/40 bg-card/60 backdrop-blur relative z-10">
+        <Card className="w-full max-w-md border-muted/40 bg-card/60 backdrop-blur relative z-10">
           <CardHeader>
             <CardTitle className="text-sm text-muted-foreground">Student details</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={saveDetails} className="flex flex-col gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="firstName">First name</Label>
-                <Input id="firstName" type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="e.g. Alex" required />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="firstName">First name</Label>
+                  <Input id="firstName" type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="e.g. Alex" required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="lastName">Last name</Label>
+                  <Input id="lastName" type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="e.g. Tan" required />
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="lastName">Last name</Label>
-                <Input id="lastName" type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="e.g. Tan" required />
-              </div>
+              
               <div className="grid gap-2">
                 <Label htmlFor="studentId">Student ID</Label>
                 <Input id="studentId" type="text" value={studentId} onChange={e => setStudentId(e.target.value)} placeholder="e.g. 12345678" required />
               </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="gender">Gender</Label>
+                  <select 
+                    id="gender" 
+                    value={gender} 
+                    onChange={e => setGender(e.target.value as "male" | "female")}
+                    className="w-full rounded-md px-3 py-2 bg-card text-foreground border border-border"
+                    required
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="ugPg">Level</Label>
+                  <select 
+                    id="ugPg" 
+                    value={ugPg} 
+                    onChange={e => setUgPg(e.target.value as "UG" | "PG")}
+                    className="w-full rounded-md px-3 py-2 bg-card text-foreground border border-border"
+                    required
+                  >
+                    <option value="UG">Undergraduate (UG)</option>
+                    <option value="PG">Postgraduate (PG)</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="dob">Date of Birth</Label>
+                <Input 
+                  id="dob" 
+                  type="date" 
+                  value={dob} 
+                  onChange={e => setDob(e.target.value)} 
+                  required 
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="discipline">Discipline</Label>
+                  <select 
+                    id="discipline" 
+                    value={discipline} 
+                    onChange={e => setDiscipline(parseInt(e.target.value))}
+                    className="w-full rounded-md px-3 py-2 bg-card text-foreground border border-border"
+                    required
+                  >
+                    <option value={1}>1</option>
+                    <option value={2}>2</option>
+                    <option value={3}>3</option>
+                    <option value={4}>4</option>
+                    <option value={5}>5</option>
+                    <option value={6}>6</option>
+                    <option value={7}>7</option>
+                    <option value={8}>8</option>
+                    <option value={9}>9</option>
+                  </select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="location">Location</Label>
+                  <select 
+                    id="location" 
+                    value={location} 
+                    onChange={e => setLocation(parseInt(e.target.value))}
+                    className="w-full rounded-md px-3 py-2 bg-card text-foreground border border-border"
+                    required
+                  >
+                    <option value={1}>1</option>
+                    <option value={2}>2</option>
+                    <option value={3}>3</option>
+                    <option value={4}>4</option>
+                    <option value={5}>5</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="grade">Grade</Label>
+                <select 
+                  id="grade" 
+                  value={grade} 
+                  onChange={e => setGrade(e.target.value as "N" | "P" | "C" | "D" | "HD")}
+                  className="w-full rounded-md px-3 py-2 bg-card text-foreground border border-border"
+                  required
+                >
+                  <option value="N">N</option>
+                  <option value="P">P</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                  <option value="HD">HD</option>
+                </select>
+              </div>
+              
               <Button type="submit" disabled={loading} className="w-full">
                 {loading ? "Saving..." : "Continue"}
               </Button>

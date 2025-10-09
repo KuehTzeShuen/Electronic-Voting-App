@@ -43,20 +43,38 @@ export default function NewPollPage() {
           if (stored === "admin" || stored === "student") setRole(stored);
         } catch {}
 
-        // 2) Validate against profile, scoped to chosen role if available
-        const { data: session } = await supabase.auth.getUser();
-        const email = session.user?.email;
-        if (!email) return;
-        const chosen = (typeof window !== "undefined" ? localStorage.getItem("appRole") : null) as
-          | "admin"
-          | "student"
-          | null;
-        const base = supabase.from("users").select("role").eq("email", email).limit(1);
-        const { data } = chosen
-          ? await base.eq("role", chosen).maybeSingle()
-          : await base.maybeSingle();
-        if (data?.role === "admin" || data?.role === "student") {
-          if (!chosen) setRole(data.role);
+        // 2) Validate against profile using Supabase auth first, then fallback to email
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        let userData: { role: string } | null = null;
+        
+        if (!authError && user?.id) {
+          // Try to get user by auth_id first
+          const { data } = await supabase
+            .from("users")
+            .select("role")
+            .eq("auth_id", user.id)
+            .limit(1)
+            .maybeSingle();
+          if (data) userData = data;
+        }
+        
+        // Fallback to email lookup if auth_id lookup failed
+        if (!userData && user?.email) {
+          const chosen = (typeof window !== "undefined" ? localStorage.getItem("appRole") : null) as
+            | "admin"
+            | "student"
+            | null;
+          const base = supabase.from("users").select("role").eq("email", user.email).limit(1);
+          const { data } = chosen
+            ? await base.eq("role", chosen).maybeSingle()
+            : await base.maybeSingle();
+          if (data) userData = data;
+        }
+        
+        if (userData?.role === "admin" || userData?.role === "student") {
+          const stored = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
+          if (!stored) setRole(userData.role);
         }
       } finally {
         setRoleLoading(false);

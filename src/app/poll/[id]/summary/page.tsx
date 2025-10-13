@@ -182,7 +182,7 @@ export default function SummaryDatasetOnly() {
       }
       
       // Calculate weighted scores
-      for (const [voterId, voterVotes] of voters) {
+      for (const [, voterVotes] of voters) {
         const numOptions = voterVotes.length;
         for (const vote of voterVotes) {
           const key = vote.option_id;

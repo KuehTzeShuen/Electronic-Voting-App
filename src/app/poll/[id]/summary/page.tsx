@@ -24,11 +24,13 @@ type DatasetRow = {
   gender: string | null;
   location: string | null;
   ug_pg?: string | null;
+  rank?: number; // For preferential voting
 };
 
 type Campaign = {
   id: string;
   label: string | null;
+  vote_type?: string;
 };
 
 export default function SummaryDatasetOnly() {
@@ -49,27 +51,46 @@ export default function SummaryDatasetOnly() {
         setLoading(true);
         setError(null);
 
-        // 0) Fetch campaign meta so we can show the title
+        // 0) Fetch campaign meta so we can show the title and vote type
         const { data: camp, error: campErr } = await supabase
           .from("campaigns")
-          .select("id, title")
+          .select("id, title, vote_type")
           .eq("id", id)
           .maybeSingle();
         if (campErr) throw campErr;
-        if (camp) setCampaign({ id: camp.id, label: camp.title });
+        if (camp) setCampaign({ id: camp.id, label: camp.title, vote_type: camp.vote_type });
 
-        // 1) votes for this campaign
-        const { data: voteRows, error: votesErr } = await supabase
-          .from("votes_single")
-          .select("option_id, voter_id, created_at")
-          .eq("campaign_id", id);
-        if (votesErr) throw votesErr;
+        // 1) votes for this campaign - handle both single and preferential voting
+        let votes: Array<{ option_id: string; voter_id: string; created_at: string | null; rank?: number }> = [];
+        
+        if (camp?.vote_type === "preferential") {
+          // Handle preferential voting
+          const { data: voteRows, error: votesErr } = await supabase
+            .from("votes_preferential")
+            .select("option_id, voter_id, created_at, rank")
+            .eq("campaign_id", id);
+          if (votesErr) throw votesErr;
 
-        const votes = (voteRows ?? []).map((v: { option_id: string; voter_id: string; created_at: string | null }) => ({
-          option_id: String(v.option_id),
-          voter_id: String(v.voter_id),
-          created_at: v.created_at ? String(v.created_at) : null,
-        }));
+          votes = (voteRows ?? []).map((v: { option_id: string; voter_id: string; created_at: string | null; rank: number }) => ({
+            option_id: String(v.option_id),
+            voter_id: String(v.voter_id),
+            created_at: v.created_at ? String(v.created_at) : null,
+            rank: v.rank,
+          }));
+        } else {
+          // Handle single voting (default)
+          const { data: voteRows, error: votesErr } = await supabase
+            .from("votes_single")
+            .select("option_id, voter_id, created_at")
+            .eq("campaign_id", id);
+          if (votesErr) throw votesErr;
+
+          votes = (voteRows ?? []).map((v: { option_id: string; voter_id: string; created_at: string | null }) => ({
+            option_id: String(v.option_id),
+            voter_id: String(v.voter_id),
+            created_at: v.created_at ? String(v.created_at) : null,
+          }));
+        }
 
         if (!votes.length) {
           if (!cancelled) setDataset([]);
@@ -123,6 +144,7 @@ export default function SummaryDatasetOnly() {
             gender: demo?.gender ?? null,
             location: demo?.location ?? null,
             ug_pg: demo?.ug_pg ?? null,
+            rank: v.rank, // Include rank for preferential voting
           };
         });
 
@@ -143,16 +165,56 @@ export default function SummaryDatasetOnly() {
 
   const countsByOption = useMemo(() => {
     const m = new Map<string, { label: string; cnt: number }>();
-    for (const row of dataset) {
-      const key = row.option_id;
-      const label = row.option_label ?? row.option_id;
-      if (!m.has(key)) m.set(key, { label, cnt: 0 });
-      m.get(key)!.cnt += 1;
+    
+    if (campaign?.vote_type === "preferential") {
+      // For preferential voting, calculate weighted scores based on ranks
+      // Get unique voters to determine number of options per voter
+      const voters = new Map<string, Array<{ option_id: string; rank: number }>>();
+      
+      // Group votes by voter
+      for (const row of dataset) {
+        if (!voters.has(row.voter_id)) {
+          voters.set(row.voter_id, []);
+        }
+        if (row.rank) {
+          voters.get(row.voter_id)!.push({ option_id: row.option_id, rank: row.rank });
+        }
+      }
+      
+      // Calculate weighted scores
+      for (const [, voterVotes] of voters) {
+        const numOptions = voterVotes.length;
+        for (const vote of voterVotes) {
+          const key = vote.option_id;
+          const label = dataset.find(d => d.option_id === key)?.option_label ?? key;
+          if (!m.has(key)) m.set(key, { label, cnt: 0 });
+          // Higher rank (1st choice) gets more points than lower rank
+          const points = Math.max(1, numOptions - vote.rank + 1);
+          m.get(key)!.cnt += points;
+        }
+      }
+    } else {
+      // For single voting, simple vote counts
+      for (const row of dataset) {
+        const key = row.option_id;
+        const label = row.option_label ?? row.option_id;
+        if (!m.has(key)) m.set(key, { label, cnt: 0 });
+        m.get(key)!.cnt += 1;
+      }
     }
+    
     return Array.from(m.values()).sort((a, b) => b.cnt - a.cnt);
-  }, [dataset]);
+  }, [dataset, campaign?.vote_type]);
 
-  const totalVotes = countsByOption.reduce((sum, d) => sum + d.cnt, 0);
+  const totalVotes = useMemo(() => {
+    if (campaign?.vote_type === "preferential") {
+      // For preferential voting, total votes = number of unique voters
+      return new Set(dataset.map(d => d.voter_id)).size;
+    } else {
+      // For single voting, total votes = sum of all votes
+      return countsByOption.reduce((sum, d) => sum + d.cnt, 0);
+    }
+  }, [dataset, countsByOption, campaign?.vote_type]);
 
   const maxCnt = useMemo(() => (countsByOption[0]?.cnt ?? 0), [countsByOption]);
   const winners = useMemo(() => {
@@ -369,7 +431,7 @@ export default function SummaryDatasetOnly() {
     URL.revokeObjectURL(url);
   }
 
-  const CustomTooltip = ({ active, payload, label, total }: { active?: boolean; payload?: Array<{ value: number }>; label?: string; total?: number }) => {
+  const CustomTooltip = ({ active, payload, label, total, voteType }: { active?: boolean; payload?: Array<{ value: number }>; label?: string; total?: number; voteType?: string }) => {
     if (!active || !payload || !payload.length) return null;
 
     const value = Number(payload[0].value) || 0;
@@ -387,7 +449,7 @@ export default function SummaryDatasetOnly() {
       >
         <div className="font-medium">{label}</div>
         <div>
-          {value} ({pct}%)
+          {voteType === "preferential" ? `${value} points` : `${value} votes`} ({pct}%)
         </div>
       </div>
     );
@@ -418,6 +480,11 @@ export default function SummaryDatasetOnly() {
         <div>
           <h1 className="text-xl font-semibold">
             Results for {campaign?.label ?? "Campaign"}
+            {campaign?.vote_type && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                ({campaign.vote_type === "preferential" ? "Preferential Voting" : "Single Choice Voting"})
+              </span>
+            )}
           </h1>
         </div>
         {/* Right: Export + info */}
@@ -457,7 +524,7 @@ export default function SummaryDatasetOnly() {
               >
                 <XAxis dataKey="label" stroke="white" />
                 <YAxis allowDecimals={false} />
-                <Tooltip content={<CustomTooltip total = {totalVotes} />} cursor={false} />
+                <Tooltip content={<CustomTooltip total={totalVotes} voteType={campaign?.vote_type} />} cursor={false} />
                 <Bar dataKey="cnt" radius={[6, 6, 0, 0]}>
                   {countsByOption.map((entry, index) => (
                     <Cell

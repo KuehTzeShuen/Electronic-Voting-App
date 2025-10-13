@@ -38,6 +38,11 @@ describe('Login Page', () => {
       data: {},
       error: null
     })
+    
+    ;(supabase.auth.verifyOtp as jest.Mock).mockResolvedValue({
+      data: { user: { id: 'test-user-id', email: 'test@example.com' } },
+      error: null
+    })
   })
 
   it('renders login form correctly', () => {
@@ -46,14 +51,14 @@ describe('Login Page', () => {
     expect(screen.getByRole('heading', { name: 'Login' })).toBeInTheDocument()
     expect(screen.getByText('Login using your student email')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('you@university.edu')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /send verification code/i })).toBeInTheDocument()
   })
 
   it('shows validation error for empty email', async () => {
     const user = userEvent.setup()
     render(<Page />)
     
-    const submitButton = screen.getByRole('button', { name: /login/i })
+    const submitButton = screen.getByRole('button', { name: /send verification code/i })
     await user.click(submitButton)
     
     // HTML5 validation should prevent submission, so no error message should appear
@@ -67,7 +72,7 @@ describe('Login Page', () => {
     
     const emailInput = screen.getByPlaceholderText('you@university.edu')
     const studentIdInput = screen.getByPlaceholderText('e.g. 12345678')
-    const submitButton = screen.getByRole('button', { name: /login/i })
+    const submitButton = screen.getByRole('button', { name: /send verification code/i })
     
     await user.type(emailInput, 'invalid-email')
     await user.type(studentIdInput, '12345678')
@@ -78,7 +83,7 @@ describe('Login Page', () => {
     expect(submitButton).not.toBeDisabled()
   })
 
-  it('submits form with valid email', async () => {
+  it('sends OTP and shows verification form', async () => {
     const user = userEvent.setup()
     const mockSignInWithOtp = jest.fn().mockResolvedValue({ data: {}, error: null })
     ;(supabase.auth.signInWithOtp as jest.Mock).mockImplementation(mockSignInWithOtp)
@@ -87,7 +92,7 @@ describe('Login Page', () => {
     
     const emailInput = screen.getByPlaceholderText('you@university.edu')
     const studentIdInput = screen.getByPlaceholderText('e.g. 12345678')
-    const submitButton = screen.getByRole('button', { name: /login/i })
+    const submitButton = screen.getByRole('button', { name: /send verification code/i })
     
     await user.type(emailInput, 'test@example.com')
     await user.type(studentIdInput, '12345678')
@@ -101,9 +106,16 @@ describe('Login Page', () => {
         },
       })
     })
+    
+    // Should now show OTP verification form
+    await waitFor(() => {
+      expect(screen.getByText('Enter verification code')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Enter 6-digit code')).toBeInTheDocument()
+      expect(screen.getByText('We sent a verification code to test@example.com')).toBeInTheDocument()
+    })
   })
 
-  it('handles sign in error', async () => {
+  it('handles OTP send error', async () => {
     const user = userEvent.setup()
     const mockSignInWithOtp = jest.fn().mockResolvedValue({ 
       data: null, 
@@ -115,7 +127,7 @@ describe('Login Page', () => {
     
     const emailInput = screen.getByPlaceholderText('you@university.edu')
     const studentIdInput = screen.getByPlaceholderText('e.g. 12345678')
-    const submitButton = screen.getByRole('button', { name: /login/i })
+    const submitButton = screen.getByRole('button', { name: /send verification code/i })
     
     await user.type(emailInput, 'test@example.com')
     await user.type(studentIdInput, '12345678')
@@ -126,7 +138,7 @@ describe('Login Page', () => {
     })
   })
 
-  it('shows loading state during submission', async () => {
+  it('shows loading state during OTP send', async () => {
     const user = userEvent.setup()
     const mockSignInWithOtp = jest.fn().mockImplementation(() => 
       new Promise(resolve => setTimeout(() => resolve({ data: {}, error: null }), 100))
@@ -137,14 +149,55 @@ describe('Login Page', () => {
     
     const emailInput = screen.getByPlaceholderText('you@university.edu')
     const studentIdInput = screen.getByPlaceholderText('e.g. 12345678')
-    const submitButton = screen.getByRole('button', { name: /login/i })
+    const submitButton = screen.getByRole('button', { name: /send verification code/i })
     
     await user.type(emailInput, 'test@example.com')
     await user.type(studentIdInput, '12345678')
     await user.click(submitButton)
     
-    expect(screen.getByText(/checking/i)).toBeInTheDocument()
+    expect(screen.getByText(/sending code/i)).toBeInTheDocument()
     expect(submitButton).toBeDisabled()
+  })
+
+  it('verifies OTP and redirects to polling menu', async () => {
+    const user = userEvent.setup()
+    const mockVerifyOtp = jest.fn().mockResolvedValue({ 
+      data: { user: { id: 'test-user-id', email: 'test@example.com' } }, 
+      error: null 
+    })
+    ;(supabase.auth.verifyOtp as jest.Mock).mockImplementation(mockVerifyOtp)
+    
+    render(<Page />)
+    
+    // First, send OTP
+    const emailInput = screen.getByPlaceholderText('you@university.edu')
+    const studentIdInput = screen.getByPlaceholderText('e.g. 12345678')
+    const sendButton = screen.getByRole('button', { name: /send verification code/i })
+    
+    await user.type(emailInput, 'test@example.com')
+    await user.type(studentIdInput, '12345678')
+    await user.click(sendButton)
+    
+    // Wait for OTP form to appear
+    await waitFor(() => {
+      expect(screen.getByText('Enter verification code')).toBeInTheDocument()
+    })
+    
+    // Enter OTP and verify
+    const otpInput = screen.getByPlaceholderText('Enter 6-digit code')
+    const verifyButton = screen.getByRole('button', { name: /verify code/i })
+    
+    await user.type(otpInput, '123456')
+    await user.click(verifyButton)
+    
+    await waitFor(() => {
+      expect(mockVerifyOtp).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        token: '123456',
+        type: 'email',
+      })
+      expect(mockRouter.push).toHaveBeenCalledWith('/polling-menu')
+    })
   })
 
   it('navigates to signup page when signup link is clicked', async () => {

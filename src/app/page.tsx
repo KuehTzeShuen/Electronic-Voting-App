@@ -11,6 +11,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [studentId, setStudentId] = useState("");
   const [role, setRole] = useState<"student" | "admin">("student");
+  const [otp, setOtp] = useState("");
+  const [step, setStep] = useState<"login" | "otp">("login");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -26,7 +28,7 @@ export default function LoginPage() {
     return "Unknown error";
   };
 
-  const login = async (e: React.FormEvent) => {
+  const sendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
@@ -49,20 +51,41 @@ export default function LoginPage() {
       });
       if (signInError) throw signInError;
       
-      // For now, we'll store the role and email for the session
-      // In a full implementation, you might want to add an OTP verification step here
+      // Move to OTP verification step
+      setStep("otp");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || "Failed to send verification code");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({
+        email,
+        token: otp,
+        type: "email",
+      });
+      if (verifyError) throw verifyError;
+      if (!data?.user) throw new Error("No user returned after verification");
+      
+      // Store user session data
       try {
         if (typeof window !== "undefined") {
           localStorage.setItem("appRole", role);
           localStorage.setItem("appEmail", email);
-          localStorage.setItem("pendingLogin", "true"); // Flag to indicate login is pending OTP
+          localStorage.setItem("authUser", JSON.stringify(data.user));
         }
       } catch {}
       
-      // For now, redirect immediately (you might want to add OTP verification step)
+      // Redirect to polling menu after successful verification
       router.push("/polling-menu");
     } catch (err: unknown) {
-      setError(getErrorMessage(err) || "Login failed");
+      setError(getErrorMessage(err) || "Invalid verification code");
     } finally {
       setLoading(false);
     }
@@ -107,38 +130,83 @@ export default function LoginPage() {
 
       <Card className="w-full max-w-xs border-muted/40 bg-card/60 backdrop-blur relative z-10">
         <CardHeader>
-          <CardTitle className="text-sm text-muted-foreground">Login using your student email</CardTitle>
+          <CardTitle className="text-sm text-muted-foreground">
+            {step === "login" ? "Login using your student email" : "Enter verification code"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={login} className="flex flex-col gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@university.edu" required />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="studentId">Student ID</Label>
-              <Input id="studentId" type="text" value={studentId} onChange={e => setStudentId(e.target.value)} placeholder="e.g. 12345678" required />
-            </div>
-            <div className="grid gap-2">
-              <Label>Role</Label>
-              <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
-                <span className="text-sm text-muted-foreground">{role === "student" ? "Student" : "Admin"}</span>
-                <button
-                  type="button"
-                  onClick={() => setRole(prev => (prev === "student" ? "admin" : "student"))}
-                  className="rounded-md bg-secondary text-secondary-foreground px-3 py-1 text-xs"
-                >
-                  Toggle
-                </button>
+          {step === "login" ? (
+            <form onSubmit={sendOtp} className="flex flex-col gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@university.edu" required />
               </div>
-            </div>
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Checking..." : "Login"}
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Don&apos;t have an account? <button type="button" onClick={() => router.push('/signup')} className="underline">Sign up</button>
-            </p>
-          </form>
+              <div className="grid gap-2">
+                <Label htmlFor="studentId">Student ID</Label>
+                <Input id="studentId" type="text" value={studentId} onChange={e => setStudentId(e.target.value)} placeholder="e.g. 12345678" required />
+              </div>
+              <div className="grid gap-2">
+                <Label>Role</Label>
+                <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
+                  <span className="text-sm text-muted-foreground">{role === "student" ? "Student" : "Admin"}</span>
+                  <button
+                    type="button"
+                    onClick={() => setRole(prev => (prev === "student" ? "admin" : "student"))}
+                    className="rounded-md bg-secondary text-secondary-foreground px-3 py-1 text-xs"
+                  >
+                    Toggle
+                  </button>
+                </div>
+              </div>
+              <Button type="submit" disabled={loading} className="w-full">
+                {loading ? "Sending code..." : "Send verification code"}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Don&apos;t have an account? <button type="button" onClick={() => router.push('/signup')} className="underline">Sign up</button>
+              </p>
+            </form>
+          ) : (
+            <form onSubmit={verifyOtp} className="flex flex-col gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="otp">Verification code</Label>
+                <Input 
+                  id="otp" 
+                  type="text" 
+                  value={otp} 
+                  onChange={e => setOtp(e.target.value)} 
+                  placeholder="Enter 6-digit code" 
+                  required 
+                  maxLength={6}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                We sent a verification code to {email}
+              </p>
+              <Button type="submit" disabled={loading} className="w-full">
+                {loading ? "Verifying..." : "Verify code"}
+              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setStep("login")} 
+                  className="flex-1"
+                  disabled={loading}
+                >
+                  Back
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={sendOtp} 
+                  className="flex-1"
+                  disabled={loading}
+                >
+                  Resend code
+                </Button>
+              </div>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>

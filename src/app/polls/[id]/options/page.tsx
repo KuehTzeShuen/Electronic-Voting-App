@@ -182,6 +182,7 @@ export default function ManageOptionsPage() {
                 <div className="text-sm font-medium text-foreground">{o.label}</div>
                 {o.description && <div className="text-xs text-muted-foreground mt-0.5">{o.description}</div>}
               </div>
+              
             ))}
           </div>
         </CardContent>

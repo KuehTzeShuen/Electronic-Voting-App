@@ -2,17 +2,25 @@
 
 // import { generateUUID } from "@/lib/uuid";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { useRouter } from "next/navigation";
+import PreferentialPoll from "@/components/PreferentialPoll";
 
 export default function PollDetailPage() {
   const params = useParams();
-  const id = Array.isArray(params?.id) ? params?.id[0] : (params?.id as string);
+  const router = useRouter();
+  const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
+
   const [role, setRole] = useState<"student" | "admin">("student");
   const [options, setOptions] = useState<{ id: string; label: string; description: string | null }[]>([]);
-  const [campaign, setCampaign] = useState<{ title: string; description: string | null; club: string | null; starts_at: string | null; ends_at: string | null; vote_type?: "single" | "preferential"; } | null>(null);
-  const router = useRouter();
+  const [campaign, setCampaign] = useState<{
+    title: string;
+    description: string | null;
+    club: string | null;
+    starts_at: string | null;
+    ends_at: string | null;
+    vote_type?: "single" | "preferential";
+  } | null>(null);
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [voteMsg, setVoteMsg] = useState<string | null>(null);
   const [votedOptionId, setVotedOptionId] = useState<string | null>(null);
@@ -22,37 +30,32 @@ export default function PollDetailPage() {
   const [campaignLoading, setCampaignLoading] = useState(true);
   // const [showReward, setShowReward] = useState(false);
 
-  const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
-
-
-  // Load campaign details immediately with caching
+  // 🧠 Load campaign details with caching
   useEffect(() => {
     (async () => {
       const CACHE_KEY = `campaign-${id}`;
-      const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
-      
-      // Try to load from cache first
+      const CACHE_DURATION = 10 * 60 * 1000; // 10 mins
+
       try {
         const cached = localStorage.getItem(CACHE_KEY);
         if (cached) {
-          const { data: cachedData, timestamp } = JSON.parse(cached);
+          const { data, timestamp } = JSON.parse(cached);
           if (Date.now() - timestamp < CACHE_DURATION) {
-            setCampaign(cachedData);
+            setCampaign(data);
             setCampaignLoading(false);
-            return; // Use cached data
+            return;
           }
         }
       } catch {
         // Cache invalid, continue to fetch
       }
 
-      // Fetch fresh data
       const { data: camp } = await supabase
         .from("campaigns")
         .select("title, description, club, starts_at, ends_at, vote_type")
         .eq("id", id)
         .maybeSingle();
-      
+
       if (camp) {
         const campaignData = camp as { title: string; description: string | null; club: string | null; starts_at: string | null; ends_at: string | null; vote_type?: "single" | "preferential" };
         setCampaign(campaignData);
@@ -70,7 +73,7 @@ export default function PollDetailPage() {
     })();
   }, [id]);
 
-  // Load user role, options, and vote status
+  // ⚙️ Load user, role, options, and vote status
   useEffect(() => {
     (async () => {
       // Check authentication using localStorage (same as login page)
@@ -85,29 +88,25 @@ export default function PollDetailPage() {
       }
       
       if (!email || !storedRole) {
-        // No authentication data, redirect to login
         router.push("/");
         return;
       }
-      
-      // Verify the user exists in the database
-      const { data, error: fetchError } = await supabase
+
+      const { data: user } = await supabase
         .from("users")
         .select("role")
         .eq("email", email)
         .eq("role", storedRole)
         .maybeSingle();
-        
-      if (fetchError || !data) {
-        // User not found or error, redirect to login
+
+      if (!user) {
         router.push("/");
         return;
       }
-      
-      // Set the role from localStorage (which was validated against DB)
+
       setRole(storedRole as "student" | "admin");
-      
-      // Load options for this campaign with caching
+
+      // 🧩 Load and randomise options
       const OPTIONS_CACHE_KEY = `options-${id}`;
       const OPTIONS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
       
@@ -207,6 +206,7 @@ export default function PollDetailPage() {
     })();
   }, [id, router, campaign?.vote_type, options]);
 
+  // 🆔 Get or generate unique voter ID
   async function getVoterId(): Promise<string> {
     // Check localStorage for authentication (your app's auth system)
     const appEmail = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
@@ -262,15 +262,14 @@ export default function PollDetailPage() {
     }
   };
 
-
   const castVote = async () => {
     if (selectedOptionIds.length === 0) {
       setVoteMsg("Please select at least one candidate.");
       return;
     }
 
-    setVoteMsg(null);
     setSubmitting("yes");
+    const voterId = await getVoterId();
 
     try {
       if (votedOptionId) {
@@ -351,7 +350,8 @@ export default function PollDetailPage() {
           campaign_id: id,
           option_id: optId,
           voter_id: voterId,
-          rank: i + 1, // order of selection
+          rank: i + 1,
+          points: maxPoints - i,
           created_at: new Date().toISOString(),
         }));
         console.log('Inserting into votes_preferential table:', payloads);
@@ -374,16 +374,9 @@ export default function PollDetailPage() {
       }
 
       setSelectedOptionIds([]);
-
-      try {
-        localStorage.removeItem(`options-${id}`);
-      } catch {}
+      localStorage.removeItem(`options-${id}`);
     } catch (e) {
-      const msg =
-        e && typeof e === "object" && "message" in e
-          ? String((e as { message?: unknown }).message)
-          : "Failed to submit vote";
-      setVoteMsg(msg);
+      setVoteMsg("Failed to submit vote");
     } finally {
       setSubmitting(null);
     }
@@ -392,7 +385,7 @@ export default function PollDetailPage() {
   return (
     <div className="min-h-screen bg-background text-foreground px-6 py-8">
       <h1 className="text-foreground text-2xl font-semibold mb-6">Cast Your Vote</h1>
-      
+
       {campaignLoading ? (
         <>
           <div className="h-6 bg-muted animate-pulse rounded mb-2"></div>
@@ -503,11 +496,15 @@ export default function PollDetailPage() {
                 disabled={submitting !== null}
                 className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? "Submitting..." : campaign?.vote_type === "preferential" ? "Submit Preferences" : "Submit Vote"}
+                {submitting
+                  ? "Submitting..."
+                  : campaign?.vote_type === "preferential"
+                  ? "Submit Preferences"
+                  : "Submit Vote"}
               </button>
             ) : null}
 
-            <button 
+            <button
               className="rounded-md bg-secondary text-secondary-foreground px-4 py-2 text-sm"
               onClick={() => router.push("/polling-menu")}
             >
@@ -516,6 +513,7 @@ export default function PollDetailPage() {
           </div>
         </div>
       ) : (
+        // Admin view
         <div className="rounded-xl border border-border bg-card p-6">
           <p className="text-sm text-muted-foreground mb-4">Admin view: current votes (placeholder)</p>
           <div className="text-sm">
@@ -541,9 +539,7 @@ function formatDateRange(starts?: string | null, ends?: string | null) {
   const fmt = (iso?: string | null) => {
     if (!iso) return null;
     const d = new Date(iso);
-    const date = d.toLocaleDateString("en-GB");
-    const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-    return `${date} ${time}`;
+    return `${d.toLocaleDateString("en-GB")} ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
   };
   const a = fmt(starts);
   const b = fmt(ends);
@@ -552,5 +548,3 @@ function formatDateRange(starts?: string | null, ends?: string | null) {
   if (b) return `Ends: ${b}`;
   return "";
 }
-
-

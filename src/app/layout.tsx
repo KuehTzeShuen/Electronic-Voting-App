@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import NavbarWrapper from "@/components/navbar-wrapper"; // 👈 new wrapper
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,10 +29,11 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`dark ${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {/* ✅ Navbar wrapper (handles hiding logic) */}
+        <NavbarWrapper />
+
         <div className="min-h-screen w-full">
-          <div className="min-h-screen w-full">
-            {children}
-          </div>
+          {children}
         </div>
       </body>
     </html>

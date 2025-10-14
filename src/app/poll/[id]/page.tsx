@@ -26,6 +26,7 @@ export default function PollDetailPage() {
   const [votedOptionId, setVotedOptionId] = useState<string | null>(null);
   const [votedOptions, setVotedOptions] = useState<{id: string, label: string, rank?: number}[]>([]);
   const [selectedOptionId] = useState<string | null>(null);
+  const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [campaignLoading, setCampaignLoading] = useState(true);
   // const [showReward, setShowReward] = useState(false);
@@ -345,6 +346,7 @@ export default function PollDetailPage() {
 
         // Get next available IDs and insert preferential votes with rank
         const baseId = await getNextVoteId('votes_preferential');
+        const maxPoints = selectedOptionIds.length;
         const payloads = selectedOptionIds.map((optId, i) => ({
           id: baseId + i, // Sequential IDs starting from baseId
           campaign_id: id,

@@ -124,13 +124,14 @@ export default function Navbar() {
   const links = [
     { name: "Ongoing Polls", href: "/polling-menu" },
     { name: "Completed Polls", href: "/polling-menu/completed" },
+    { name: "About", href: "/about" },
   ];
 
   return (
     <nav className="flex items-center justify-between px-6 py-3 border-b bg-background/80 backdrop-blur-md">
       {/* Logo */}
       <Link href="/polling-menu" className="font-bold text-xl">
-        Votely
+        <span className="bg-clip-text text-transparent bg-[linear-gradient(135deg,#60a5fa_0%,#a78bfa_40%,#34d399_85%)]">Votely</span>
       </Link>
 
       {/* Navigation Links */}

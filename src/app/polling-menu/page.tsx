@@ -32,7 +32,7 @@ export default function OngoingPollsPage() {
   })();
 
   const [role] = useState<"student" | "admin" | null>(initialRole);
-  const [roleLoading] = useState(true);
+  const [roleLoading, setRoleLoading] = useState(true);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const router = useRouter();
 
@@ -56,6 +56,11 @@ export default function OngoingPollsPage() {
     const mins = Math.max(1, totalMinutes); // show at least 1 minute
     return `Ending in ${mins} minute${mins !== 1 ? 's' : ''}`;
   };
+
+  // Set role loading to false after role is determined
+  React.useEffect(() => {
+    setRoleLoading(false);
+  }, []);
 
   // Load campaigns without caching
   React.useEffect(() => {
@@ -208,22 +213,49 @@ export default function OngoingPollsPage() {
     if (!code || code.trim().length === 0) return;
     
     try {
+      console.log('Attempting to join campaign:', campaignId, 'with code:', code.trim());
+      
       const { data, error } = await supabase
         .from("campaigns")
         .select("code")
         .eq("id", campaignId)
         .single();
       
-      if (error) throw error;
+      console.log('Database response:', { data, error });
       
-      if (data.code === code.trim()) {
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
+      
+      if (!data) {
+        console.error('No data returned from database');
+        alert("Campaign not found");
+        return;
+      }
+      
+      console.log('Expected code:', data.code, 'Entered code:', code.trim());
+      console.log('Expected code type:', typeof data.code, 'Entered code type:', typeof code.trim());
+      console.log('Expected code length:', data.code?.length, 'Entered code length:', code.trim().length);
+      console.log('Expected code JSON:', JSON.stringify(data.code), 'Entered code JSON:', JSON.stringify(code.trim()));
+      
+      // Normalize both codes for comparison
+      const expectedCode = String(data.code || '').trim();
+      const enteredCode = String(code || '').trim();
+      
+      console.log('Normalized expected:', expectedCode, 'Normalized entered:', enteredCode);
+      console.log('Codes match:', expectedCode === enteredCode);
+      
+      if (expectedCode === enteredCode) {
+        console.log('Code matches, redirecting to poll');
         router.push(`/poll/${campaignId}`);
       } else {
+        console.log('Code does not match');
         alert("Invalid access code");
       }
     } catch (error) {
       console.error("Error joining campaign:", error);
-      alert("Failed to join campaign");
+      alert("Failed to join campaign: " + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
 }

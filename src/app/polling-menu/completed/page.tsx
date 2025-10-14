@@ -19,7 +19,7 @@ type Campaign = {
 export default function CompletedPollsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [completedCampaigns, setCompletedCampaigns] = useState<Campaign[]>([]);
-  const [roleLoading] = useState(true);
+  const [roleLoading, setRoleLoading] = useState(true);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const router = useRouter();
 
@@ -35,7 +35,10 @@ export default function CompletedPollsPage() {
 
   const [role] = useState<"student" | "admin" | null>(initialRole);
 
-
+  // Set role loading to false after role is determined
+  React.useEffect(() => {
+    setRoleLoading(false);
+  }, []);
 
   // Load campaigns without caching
   React.useEffect(() => {

@@ -56,6 +56,28 @@ export default function OngoingPollsPage() {
   // const [cardStyle, setCardStyle] = useState<React.CSSProperties>({});
   const router = useRouter();
 
+  // Format remaining time until campaign end
+  const formatTimeRemaining = (iso?: string | null): string | null => {
+    if (!iso) return null;
+    const endMs = new Date(iso).getTime();
+    const nowMs = Date.now();
+    const diffMs = endMs - nowMs;
+    if (isNaN(endMs)) return null;
+    if (diffMs <= 0) return "Ended";
+    const totalMinutes = Math.floor(diffMs / 60000);
+    const totalHours = Math.floor(totalMinutes / 60);
+    const totalDays = Math.floor(totalHours / 24);
+    if (totalDays >= 1) {
+      const days = totalDays + (totalHours % 24 > 0 || totalMinutes % 60 > 0 ? 1 : 0); // round up partial days
+      return `Ending in ${days} day${days !== 1 ? 's' : ''}`;
+    }
+    if (totalHours >= 1) {
+      return `Ending in ${totalHours} hour${totalHours !== 1 ? 's' : ''}`;
+    }
+    const mins = Math.max(1, totalMinutes); // show at least 1 minute
+    return `Ending in ${mins} minute${mins !== 1 ? 's' : ''}`;
+  };
+
   // Animation end handler
   // const handleAnimationEnd = () => {
   //   if (selectedIdx !== null) {
@@ -347,14 +369,19 @@ export default function OngoingPollsPage() {
                     {/* Role-aware style glow (dynamic circular, more subtle) */}
                     <div className="pointer-events-none absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-[radial-gradient(var(--r)_var(--r)_at_var(--x)_var(--y),rgba(99,102,241,0.08)_0%,rgba(99,102,241,0.04)_40%,transparent_85%)]" />
                     <div className="relative z-10">
-                      {c.club && <div className="text-sm text-muted-foreground font-medium">{c.club}</div>}
-                      <div className="text-foreground text-lg font-semibold mt-1 tracking-tight">{c.title}</div>
-                      {c.description && <div className="text-muted-foreground text-xs mt-1">{c.description}</div>}
-                      {c.ends_at && (
-                        <div className="text-xs text-muted-foreground mt-2">
-                          Ends: {new Date(c.ends_at).toLocaleDateString()} at {new Date(c.ends_at).toLocaleTimeString()}
+                      {c.club && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
+                          <span>{c.club}</span>
+                          {c.ends_at && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-medium bg-red-500/15 text-red-400 border-red-500/30">
+                              {formatTimeRemaining(c.ends_at) ?? 'Ending soon'}
+                            </span>
+                          )}
                         </div>
                       )}
+                      <div className="text-foreground text-xl font-semibold mt-1 tracking-tight">{c.title}</div>
+                      {c.description && <div className="text-muted-foreground text-xs mt-2">{c.description}</div>}
+                      {c.ends_at && null}
                       {role === "student" ? (
                         <div className="flex items-center gap-2 mt-4">
                           <Input

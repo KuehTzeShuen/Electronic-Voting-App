@@ -124,7 +124,6 @@ export default function Navbar() {
   const links = [
     { name: "Polls", href: "/polling-menu" },
     { name: "Completed Polls", href: "/polling-menu/completed" },
-    { name: "About", href: "/about" },
   ];
 
   return (
@@ -165,6 +164,19 @@ export default function Navbar() {
               </NavigationMenuLink>
             </NavigationMenuItem>
           )}
+          {/* Always render About last */}
+          <NavigationMenuItem>
+            <NavigationMenuLink
+              asChild
+              className={`px-3 py-2 rounded-md transition ${
+                pathname === "/about"
+                  ? "text-primary font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Link href="/about">About</Link>
+            </NavigationMenuLink>
+          </NavigationMenuItem>
         </NavigationMenuList>
       </NavigationMenu>
 

@@ -186,14 +186,18 @@ export default function CompletedPollsPage() {
                     {/* Role-aware style glow (dynamic circular, more subtle) */}
                     <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-[radial-gradient(var(--r)_var(--r)_at_var(--x)_var(--y),rgba(99,102,241,0.08)_0%,rgba(99,102,241,0.04)_40%,transparent_85%)]" />
                     <div className="relative">
-                      {c.club && <div className="text-sm text-muted-foreground font-medium">{c.club}</div>}
-                      <div className="text-foreground text-lg font-semibold mt-1 tracking-tight">{c.title}</div>
-                      {c.description && <div className="text-muted-foreground text-xs mt-1">{c.description}</div>}
-                      {c.ends_at && (
-                        <div className="text-xs text-muted-foreground mt-2">
-                          Ended: {new Date(c.ends_at).toLocaleDateString()} at {new Date(c.ends_at).toLocaleTimeString()}
+                      {c.club && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
+                          <span>{c.club}</span>
+                          {c.ends_at && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-medium bg-red-500/15 text-red-400 border-red-500/30">
+                              Ended: {new Date(c.ends_at).toLocaleDateString()} at {new Date(c.ends_at).toLocaleTimeString()}
+                            </span>
+                          )}
                         </div>
                       )}
+                      <div className="text-foreground text-xl font-semibold mt-1 tracking-tight">{c.title}</div>
+                      {c.description && <div className="text-muted-foreground text-xs mt-2">{c.description}</div>}
                       {role === "admin" && (
                         <div className="flex items-center gap-2 mt-4">
                           <Button size="sm" variant="secondary" className="hover:bg-white/10" onClick={() => router.push(`/poll/${c.id}/results`)}>

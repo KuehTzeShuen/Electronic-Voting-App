@@ -124,10 +124,25 @@ export default function CompletedPollsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground relative">
-      {/* Background pattern */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-secondary/20"></div>
+    <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
+      {/* Background Shapes (match ongoing polls) */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Large gradient circles */}
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl animate-float"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-secondary/20 to-transparent rounded-full blur-3xl animate-float-delayed"></div>
+        
+        {/* Medium shapes */}
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-gradient-to-br from-accent/10 to-transparent rounded-full blur-2xl animate-float"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-gradient-to-tl from-primary/15 to-transparent rounded-full blur-xl animate-float-delayed"></div>
+        
+        {/* Small accent shapes */}
+        <div className="absolute top-1/3 right-1/3 w-16 h-16 bg-gradient-to-br from-chart-1/20 to-transparent rounded-full blur-lg animate-float"></div>
+        <div className="absolute bottom-1/3 left-1/3 w-20 h-20 bg-gradient-to-tl from-chart-2/15 to-transparent rounded-full blur-lg animate-float-delayed"></div>
+        
+        {/* Additional decorative elements */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-primary/30 rounded-full animate-pulse"></div>
+        <div className="absolute top-1/6 right-1/6 w-1 h-1 bg-chart-3/40 rounded-full animate-pulse" style={{animationDelay: '1s'}}></div>
+        <div className="absolute bottom-1/6 left-1/6 w-1.5 h-1.5 bg-chart-4/30 rounded-full animate-pulse" style={{animationDelay: '2s'}}></div>
         
         {/* Subtle grid pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
@@ -135,50 +150,9 @@ export default function CompletedPollsPage() {
 
       <header className="w-full px-6 pt-8 pb-4 flex items-center justify-between relative z-10">
         <h1 className="text-foreground text-2xl font-semibold">Completed Polls</h1>
-        <div className="flex items-center gap-2">
-          <Button 
-            size="sm" 
-            variant="secondary" 
-            onClick={() => router.push("/polling-menu")}
-          >
-            Back to Ongoing
-          </Button>
-          <Button size="sm" variant="secondary" onClick={toggleProfile}>Profile</Button>
-        </div>
       </header>
 
-      {profileOpen && (
-        <>
-          <div className="fixed inset-0 z-[999] bg-black/40" onClick={toggleProfile} />
-          <div className="fixed right-6 top-20 z-[1000] w-64 rounded-md border border-border bg-card p-3 shadow-lg">
-            <div className="text-sm font-medium text-foreground mb-2">Profile</div>
-            <div className="text-xs text-muted-foreground space-y-1 max-h-80 overflow-y-auto">
-              <div><span className="font-medium text-foreground">Email:</span> {profile?.email ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Name:</span> {(profile?.first_name ?? "-") + " " + (profile?.last_name ?? "")}</div>
-              <div><span className="font-medium text-foreground">Student ID:</span> {profile?.student_id ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Gender:</span> {profile?.gender ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Level:</span> {profile?.ug_pg ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Date of Birth:</span> {profile?.dob ? new Date(profile.dob).toLocaleDateString() : "-"}</div>
-              <div><span className="font-medium text-foreground">Discipline:</span> {profile?.discipline ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Location:</span> {profile?.location ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Grade:</span> {profile?.grade ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Role:</span> {profile?.role ?? "-"}</div>
-            </div>
-            <div className="mt-3 flex justify-end gap-2">
-              <button className="rounded-md bg-secondary text-secondary-foreground px-3 py-1 text-xs" onClick={toggleProfile}>Close</button>
-              <button className="rounded-md bg-destructive text-destructive-foreground px-3 py-1 text-xs" onClick={() => {
-                try {
-                  localStorage.removeItem("appEmail");
-                  localStorage.removeItem("appRole");
-                } catch {
-                  // localStorage not available
-                }
-                router.push("/");
-              }}>Logout</button>
-            </div>
-          </div>
-        </>
-      )}
+      {/* Profile modal moved to global navbar */}
 
       <main className="w-full px-4 pt-6 pb-10 space-y-6 relative z-10">
         {(roleLoading || campaignsLoading) && (

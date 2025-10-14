@@ -124,136 +124,196 @@ export default function NewPollPage() {
 
   if (roleLoading) {
     return (
-      <div className="min-h-screen bg-background text-foreground px-6 py-8">
-        <h1 className="text-foreground text-2xl font-semibold mb-6">Add New Poll</h1>
-        <Card className="w-full max-w-xl mx-auto border-muted/40 bg-card/60 backdrop-blur">
-          <CardHeader>
-            <div className="h-4 w-32 bg-muted animate-pulse rounded"></div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-4">
-              {/* Form fields skeleton */}
-              <div className="space-y-2">
-                <div className="h-3 w-12 bg-muted animate-pulse rounded"></div>
-                <div className="h-10 bg-muted animate-pulse rounded"></div>
-              </div>
-              <div className="space-y-2">
-                <div className="h-3 w-16 bg-muted animate-pulse rounded"></div>
-                <div className="h-10 bg-muted animate-pulse rounded"></div>
-              </div>
-              <div className="space-y-2">
-                <div className="h-3 w-24 bg-muted animate-pulse rounded"></div>
-                <div className="h-10 bg-muted animate-pulse rounded"></div>
-              </div>
-              <div className="space-y-2">
-                <div className="h-3 w-12 bg-muted animate-pulse rounded"></div>
-                <div className="h-10 bg-muted animate-pulse rounded"></div>
-              </div>
-              <div className="space-y-2">
-                <div className="h-3 w-20 bg-muted animate-pulse rounded"></div>
-                <div className="h-10 bg-muted animate-pulse rounded"></div>
-              </div>
-              {/* Date inputs skeleton */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
+        {/* Background Shapes */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {/* Large gradient circles */}
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl animate-float"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-secondary/20 to-transparent rounded-full blur-3xl animate-float-delayed"></div>
+          {/* Medium shapes */}
+          <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-gradient-to-br from-accent/10 to-transparent rounded-full blur-2xl animate-float"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-gradient-to-tl from-primary/15 to-transparent rounded-full blur-xl animate-float-delayed"></div>
+          {/* Small accent shapes */}
+          <div className="absolute top-1/3 right-1/3 w-16 h-16 bg-gradient-to-br from-chart-1/20 to-transparent rounded-full blur-lg animate-float"></div>
+          <div className="absolute bottom-1/3 left-1/3 w-20 h-20 bg-gradient-to-tl from-chart-2/15 to-transparent rounded-full blur-lg animate-float-delayed"></div>
+          {/* Additional decorative elements */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-primary/30 rounded-full animate-pulse"></div>
+          <div className="absolute top-1/6 right-1/6 w-1 h-1 bg-chart-3/40 rounded-full animate-pulse" style={{animationDelay: '1s'}}></div>
+          <div className="absolute bottom-1/6 left-1/6 w-1.5 h-1.5 bg-chart-4/30 rounded-full animate-pulse" style={{animationDelay: '2s'}}></div>
+          {/* Subtle grid pattern */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
+        </div>
+        <div className="px-6 py-8 relative z-10">
+          <h1 className="text-foreground text-2xl font-semibold mb-6">Add New Poll</h1>
+          <Card className="w-full max-w-xl mx-auto border-muted/40 bg-card/60 backdrop-blur">
+            <CardHeader>
+              <div className="h-4 w-32 bg-muted animate-pulse rounded"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-4">
+                {/* Form fields skeleton */}
                 <div className="space-y-2">
-                  <div className="h-3 w-16 bg-muted animate-pulse rounded"></div>
+                  <div className="h-3 w-12 bg-muted animate-pulse rounded"></div>
                   <div className="h-10 bg-muted animate-pulse rounded"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="h-3 w-16 bg-muted animate-pulse rounded"></div>
                   <div className="h-10 bg-muted animate-pulse rounded"></div>
                 </div>
+                <div className="space-y-2">
+                  <div className="h-3 w-24 bg-muted animate-pulse rounded"></div>
+                  <div className="h-10 bg-muted animate-pulse rounded"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 w-12 bg-muted animate-pulse rounded"></div>
+                  <div className="h-10 bg-muted animate-pulse rounded"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 w-20 bg-muted animate-pulse rounded"></div>
+                  <div className="h-10 bg-muted animate-pulse rounded"></div>
+                </div>
+                {/* Date inputs skeleton */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="h-3 w-16 bg-muted animate-pulse rounded"></div>
+                    <div className="h-10 bg-muted animate-pulse rounded"></div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-3 w-16 bg-muted animate-pulse rounded"></div>
+                    <div className="h-10 bg-muted animate-pulse rounded"></div>
+                  </div>
+                </div>
+                {/* Buttons skeleton */}
+                <div className="flex gap-2">
+                  <div className="h-10 w-24 bg-muted animate-pulse rounded"></div>
+                  <div className="h-10 w-20 bg-muted animate-pulse rounded"></div>
+                </div>
               </div>
-              {/* Buttons skeleton */}
-              <div className="flex gap-2">
-                <div className="h-10 w-24 bg-muted animate-pulse rounded"></div>
-                <div className="h-10 w-20 bg-muted animate-pulse rounded"></div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   if (role !== "admin") {
     return (
-      <div className="min-h-screen bg-background text-foreground px-6 py-8">
-        <p className="text-sm text-muted-foreground">Only admins can add polls.</p>
-        <Button className="mt-4" onClick={() => router.push("/polling-menu")}>Back</Button>
+      <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
+        {/* Background Shapes */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {/* Large gradient circles */}
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl animate-float"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-secondary/20 to-transparent rounded-full blur-3xl animate-float-delayed"></div>
+          {/* Medium shapes */}
+          <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-gradient-to-br from-accent/10 to-transparent rounded-full blur-2xl animate-float"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-gradient-to-tl from-primary/15 to-transparent rounded-full blur-xl animate-float-delayed"></div>
+          {/* Small accent shapes */}
+          <div className="absolute top-1/3 right-1/3 w-16 h-16 bg-gradient-to-br from-chart-1/20 to-transparent rounded-full blur-lg animate-float"></div>
+          <div className="absolute bottom-1/3 left-1/3 w-20 h-20 bg-gradient-to-tl from-chart-2/15 to-transparent rounded-full blur-lg animate-float-delayed"></div>
+          {/* Additional decorative elements */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-primary/30 rounded-full animate-pulse"></div>
+          <div className="absolute top-1/6 right-1/6 w-1 h-1 bg-chart-3/40 rounded-full animate-pulse" style={{animationDelay: '1s'}}></div>
+          <div className="absolute bottom-1/6 left-1/6 w-1.5 h-1.5 bg-chart-4/30 rounded-full animate-pulse" style={{animationDelay: '2s'}}></div>
+          {/* Subtle grid pattern */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
+        </div>
+        <div className="px-6 py-8 relative z-10">
+          <p className="text-sm text-muted-foreground">Only admins can add polls.</p>
+          <Button className="mt-4" onClick={() => router.push("/polling-menu")}>Back</Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground px-6 py-8">
-      <h1 className="text-foreground text-2xl font-semibold mb-6">Add New Poll</h1>
-      <Card className="w-full max-w-xl mx-auto border-muted/40 bg-card/60 backdrop-blur">
-        <CardHeader>
-          <CardTitle className="text-sm text-muted-foreground">Configure the poll</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {error && <div className="mb-3 text-sm text-destructive">{error}</div>}
-          <form onSubmit={handleCreate} className="flex flex-col gap-4">
-            <div>
-              <label className="block text-sm mb-1">Club</label>
-              <Input value={club} onChange={e => setClub(e.target.value)} placeholder="Club name" required />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Title</label>
-              <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Poll title" required />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Extra info (optional)</label>
-              <Input value={extra} onChange={e => setExtra(e.target.value)} placeholder="e.g. Notes or perks" />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Code</label>
-              <Input value={code} onChange={e => setCode(e.target.value)} placeholder="e.g. ABC123" />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Voting type</label>
-              <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
-                <span className="text-sm text-muted-foreground">{votingType === "single" ? "Single vote" : "Preferential voting"}</span>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="text-xs"
-                  onClick={() => setVotingType(prev => (prev === "single" ? "preferential" : "single"))}
-                >
-                  Toggle
-                </Button>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
+      {/* Background Shapes */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Large gradient circles */}
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl animate-float"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-secondary/20 to-transparent rounded-full blur-3xl animate-float-delayed"></div>
+        {/* Medium shapes */}
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-gradient-to-br from-accent/10 to-transparent rounded-full blur-2xl animate-float"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-gradient-to-tl from-primary/15 to-transparent rounded-full blur-xl animate-float-delayed"></div>
+        {/* Small accent shapes */}
+        <div className="absolute top-1/3 right-1/3 w-16 h-16 bg-gradient-to-br from-chart-1/20 to-transparent rounded-full blur-lg animate-float"></div>
+        <div className="absolute bottom-1/3 left-1/3 w-20 h-20 bg-gradient-to-tl from-chart-2/15 to-transparent rounded-full blur-lg animate-float-delayed"></div>
+        {/* Additional decorative elements */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-primary/30 rounded-full animate-pulse"></div>
+        <div className="absolute top-1/6 right-1/6 w-1 h-1 bg-chart-3/40 rounded-full animate-pulse" style={{animationDelay: '1s'}}></div>
+        <div className="absolute bottom-1/6 left-1/6 w-1.5 h-1.5 bg-chart-4/30 rounded-full animate-pulse" style={{animationDelay: '2s'}}></div>
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
+      </div>
+      <div className="px-6 py-8 relative z-10">
+        <h1 className="text-foreground text-2xl font-semibold mb-6">Add New Poll</h1>
+        <Card className="w-full max-w-xl mx-auto border-muted/40 bg-card/60 backdrop-blur">
+          <CardHeader>
+            <CardTitle className="text-sm text-muted-foreground">Configure the poll</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {error && <div className="mb-3 text-sm text-destructive">{error}</div>}
+            <form onSubmit={handleCreate} className="flex flex-col gap-4">
               <div>
-                <label className="block text-sm mb-1">Starts at</label>
-                <Input
-                  type="datetime-local"
-                  value={startsAt}
-                  onChange={e => setStartsAt(e.target.value)}
-                  required
-                  className="[&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
-                />
+                <label className="block text-sm mb-1">Club</label>
+                <Input value={club} onChange={e => setClub(e.target.value)} placeholder="Club name" required />
               </div>
               <div>
-                <label className="block text-sm mb-1">Ends at</label>
-                <Input
-                  type="datetime-local"
-                  value={endsAt}
-                  onChange={e => setEndsAt(e.target.value)}
-                  required
-                  className="[&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
-                />
+                <label className="block text-sm mb-1">Title</label>
+                <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Poll title" required />
               </div>
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Create poll"}</Button>
-              <Button type="button" variant="secondary" onClick={() => router.push("/polling-menu")}>Cancel</Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+              <div>
+                <label className="block text-sm mb-1">Extra info (optional)</label>
+                <Input value={extra} onChange={e => setExtra(e.target.value)} placeholder="e.g. Notes or perks" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Code</label>
+                <Input value={code} onChange={e => setCode(e.target.value)} placeholder="e.g. ABC123" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Voting type</label>
+                <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
+                  <span className="text-sm text-muted-foreground">{votingType === "single" ? "Single vote" : "Preferential voting"}</span>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="text-xs"
+                    onClick={() => setVotingType(prev => (prev === "single" ? "preferential" : "single"))}
+                  >
+                    Toggle
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm mb-1">Starts at</label>
+                  <Input
+                    type="datetime-local"
+                    value={startsAt}
+                    onChange={e => setStartsAt(e.target.value)}
+                    required
+                    className="[&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Ends at</label>
+                  <Input
+                    type="datetime-local"
+                    value={endsAt}
+                    onChange={e => setEndsAt(e.target.value)}
+                    required
+                    className="[&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Create poll"}</Button>
+                <Button type="button" variant="secondary" onClick={() => router.push("/polling-menu")}>Cancel</Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

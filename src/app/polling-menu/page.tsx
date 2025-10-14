@@ -309,53 +309,9 @@ export default function OngoingPollsPage() {
 
       <header className="w-full px-6 pt-8 pb-4 flex items-center justify-between relative z-10">
         <h1 className="text-foreground text-2xl font-semibold">Ongoing Polls</h1>
-        <div className="flex items-center gap-2">
-          {!roleLoading && role === "admin" && (
-            <Button size="sm" onClick={() => router.push("/polls/new")}>Add poll</Button>
-          )}
-          <Button 
-            size="sm" 
-            variant="secondary" 
-            onClick={() => router.push("/polling-menu/completed")}
-          >
-            View Completed
-          </Button>
-          <Button size="sm" variant="secondary" onClick={toggleProfile}>Profile</Button>
-        </div>
       </header>
 
-      {profileOpen && (
-        <>
-          <div className="fixed inset-0 z-[999] bg-black/40" onClick={toggleProfile} />
-          <div className="fixed right-6 top-20 z-[1000] w-64 rounded-md border border-border bg-card p-3 shadow-lg">
-            <div className="text-sm font-medium text-foreground mb-2">Profile</div>
-            <div className="text-xs text-muted-foreground space-y-1 max-h-80 overflow-y-auto">
-              <div><span className="font-medium text-foreground">Email:</span> {profile?.email ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Name:</span> {(profile?.first_name ?? "-") + " " + (profile?.last_name ?? "")}</div>
-              <div><span className="font-medium text-foreground">Student ID:</span> {profile?.student_id ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Gender:</span> {profile?.gender ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Level:</span> {profile?.ug_pg ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Date of Birth:</span> {profile?.dob ? new Date(profile.dob).toLocaleDateString() : "-"}</div>
-              <div><span className="font-medium text-foreground">Discipline:</span> {profile?.discipline ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Location:</span> {profile?.location ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Grade:</span> {profile?.grade ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Role:</span> {profile?.role ?? "-"}</div>
-            </div>
-            <div className="mt-3 flex justify-end gap-2">
-              <Button size="sm" variant="secondary" onClick={toggleProfile}>Close</Button>
-              <Button size="sm" variant="destructive" onClick={() => {
-                try {
-                  localStorage.removeItem("appEmail");
-                  localStorage.removeItem("appRole");
-                } catch {
-                  // localStorage not available
-                }
-                router.push("/");
-              }}>Logout</Button>
-            </div>
-          </div>
-        </>
-      )}
+      {/* Profile modal moved to global navbar */}
 
       {/* Admin add form moved to /polls/new */}
 

@@ -53,9 +53,21 @@ export default function AboutPage() {
           ].map((f, i) => (
             <div
               key={i}
-              className="relative group rounded-xl border border-white/10 bg-white/5 p-4 overflow-hidden"
+              className="relative group rounded-xl border border-border bg-background/50 p-4 overflow-hidden"
+              onMouseMove={(e) => {
+                const el = e.currentTarget as HTMLDivElement;
+                const rect = el.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                el.style.setProperty('--x', `${x}px`);
+                el.style.setProperty('--y', `${y}px`);
+                const base = Math.min(rect.width, rect.height);
+                const r = Math.max(220, Math.min(480, base * 0.75));
+                el.style.setProperty('--r', `${r}px`);
+              }}
             >
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[radial-gradient(600px_120px_at_var(--x,50%)_0%,rgba(99,102,241,0.12),transparent_60%)]" />
+              {/* Role-aware style glow (dynamic circular, gradual fade) */}
+              <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-[radial-gradient(var(--r)_var(--r)_at_var(--x)_var(--y),rgba(99,102,241,0.14)_0%,rgba(99,102,241,0.08)_40%,transparent_85%)]" />
               <div className="relative">
                 <h3 className="text-sm font-medium mb-1 tracking-tight">
                   {f.title}
@@ -69,10 +81,21 @@ export default function AboutPage() {
         </section>
 
         {/* Glass card with glow */}
-        <section className="relative rounded-2xl border border-white/10 bg-white/5 p-6 md:p-8 overflow-hidden">
-          <div className="pointer-events-none absolute -inset-px rounded-2xl [mask-image:linear-gradient(transparent,black,transparent)]">
-            <div className="absolute -inset-px rounded-2xl bg-[conic-gradient(from_90deg_at_50%_50%,#60a5fa_0deg,#a78bfa_120deg,#34d399_240deg,#60a5fa_360deg)] opacity-20 blur-2xl" />
-          </div>
+        <section
+          className="relative rounded-2xl border border-border bg-background/50 p-6 md:p-8 overflow-hidden group"
+          onMouseMove={(e) => {
+            const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            (e.currentTarget as HTMLDivElement).style.setProperty('--x', `${x}px`);
+            (e.currentTarget as HTMLDivElement).style.setProperty('--y', `${y}px`);
+            const base = Math.min(rect.width, rect.height);
+            const r = Math.max(320, Math.min(720, base * 0.9));
+            (e.currentTarget as HTMLDivElement).style.setProperty('--r', `${r}px`);
+          }}
+        >
+          {/* Dynamic circular glow with gradual fade */}
+          <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-[radial-gradient(var(--r)_var(--r)_at_var(--x)_var(--y),rgba(99,102,241,0.14)_0%,rgba(99,102,241,0.06)_35%,transparent_90%)]" />
           <div className="relative">
             <h2 className="text-lg font-semibold mb-2">Why Votely?</h2>
             <p className="text-sm text-muted-foreground">

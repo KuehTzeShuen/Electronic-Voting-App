@@ -122,7 +122,7 @@ export default function Navbar() {
   }, []);
 
   const links = [
-    { name: "Ongoing Polls", href: "/polling-menu" },
+    { name: "Polls", href: "/polling-menu" },
     { name: "Completed Polls", href: "/polling-menu/completed" },
     { name: "About", href: "/about" },
   ];

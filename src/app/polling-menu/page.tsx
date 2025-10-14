@@ -308,7 +308,7 @@ export default function OngoingPollsPage() {
       </div>
 
       <header className="w-full px-6 pt-8 pb-4 flex items-center justify-between relative z-10">
-        <h1 className="text-foreground text-2xl font-semibold">Ongoing Polls</h1>
+        <h1 className="text-foreground text-2xl font-semibold">Polls</h1>
       </header>
 
       {/* Profile modal moved to global navbar */}
@@ -329,11 +329,26 @@ export default function OngoingPollsPage() {
             {ongoingCampaigns.length > 0 ? (
               <div className="space-y-4">
                 {ongoingCampaigns.map((c) => (
-                  <Card key={c.id} className="w-full border-muted/40 bg-card/60 backdrop-blur">
-                    <CardHeader className="pb-0"></CardHeader>
-                    <CardContent>
+                  <div
+                    key={c.id}
+                    className="relative group rounded-xl border border-border bg-background/50 p-4 overflow-hidden"
+                    onMouseMove={(e) => {
+                      const el = e.currentTarget as HTMLDivElement;
+                      const rect = el.getBoundingClientRect();
+                      const x = e.clientX - rect.left;
+                      const y = e.clientY - rect.top;
+                      el.style.setProperty('--x', `${x}px`);
+                      el.style.setProperty('--y', `${y}px`);
+                      const base = Math.min(rect.width, rect.height);
+                      const r = Math.max(260, Math.min(560, base * 0.8));
+                      el.style.setProperty('--r', `${r}px`);
+                    }}
+                  >
+                    {/* Role-aware style glow (dynamic circular, more subtle) */}
+                    <div className="pointer-events-none absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-[radial-gradient(var(--r)_var(--r)_at_var(--x)_var(--y),rgba(99,102,241,0.08)_0%,rgba(99,102,241,0.04)_40%,transparent_85%)]" />
+                    <div className="relative z-10">
                       {c.club && <div className="text-sm text-muted-foreground font-medium">{c.club}</div>}
-                      <div className="text-foreground text-lg font-semibold mt-1">{c.title}</div>
+                      <div className="text-foreground text-lg font-semibold mt-1 tracking-tight">{c.title}</div>
                       {c.description && <div className="text-muted-foreground text-xs mt-1">{c.description}</div>}
                       {c.ends_at && (
                         <div className="text-xs text-muted-foreground mt-2">
@@ -348,19 +363,19 @@ export default function OngoingPollsPage() {
                             value={codes[c.id] || ""}
                             onChange={e => handleCodeChange(c.id, e.target.value)}
                           />
-                          <Button size="sm" onClick={() => handleJoin(c.id)} disabled={(codes[c.id] || "").trim() === ""}>
+                          <Button size="sm" className="shadow-[0_0_18px_rgba(99,102,241,0.25)]" onClick={() => handleJoin(c.id)} disabled={(codes[c.id] || "").trim() === ""}>
                             Join
                           </Button>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 mt-4">
-                          <Button size="sm" variant="secondary" onClick={() => router.push(`/poll/${c.id}/results`)}>
+                          <Button size="sm" variant="secondary" className="hover:bg-white/10" onClick={() => router.push(`/poll/${c.id}/results`)}>
                             View votes
                           </Button>
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (

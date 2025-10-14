@@ -299,7 +299,7 @@ export default function SummaryDatasetOnly() {
   
   // ----- Discipline helpers -----
   const disciplineMap = useMemo((): Record<string, string> => ({
-    "1": "Design and Architecture",
+    "1": "Arts, Design and Architecture",
     "2": "Arts",
     "3": "Business and Economics",
     "4": "Education",
@@ -318,7 +318,7 @@ export default function SummaryDatasetOnly() {
 
   // A readable palette for disciplines (+ NA)
   const disciplineColors: Record<string, string> = {
-    "Design and Architecture": "#f59e0b", // amber
+    "Arts, Design and Architecture": "#f59e0b", // amber
     "Arts":                          "#60a5fa", // blue
     "Business and Economics":        "#34d399", // green
     "Education":                     "#f472b6", // pink

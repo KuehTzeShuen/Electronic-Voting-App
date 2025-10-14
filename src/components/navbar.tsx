@@ -40,6 +40,28 @@ export default function Navbar() {
     role: string | null;
   } | null>(null);
 
+  // Mappings for display
+  const disciplineMap: Record<string, string> = {
+    "1": "Design and Architecture",
+    "2": "Arts",
+    "3": "Business and Economics",
+    "4": "Education",
+    "5": "Engineering",
+    "6": "Information Technology",
+    "7": "Law",
+    "8": "Medicine, Nursing and Health Sciences",
+    "9": "Pharmacy and Pharmaceutical Sciences",
+    "10": "Science",
+  };
+  const locationMap: Record<string, string> = {
+    "1": "Clayton",
+    "2": "Caulfield",
+    "3": "Peninsula",
+    "4": "Parkville",
+    "5": "Malaysia",
+    "6": "Other",
+  };
+
   useEffect(() => {
     try {
       const storedRole = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
@@ -165,8 +187,8 @@ export default function Navbar() {
               <div><span className="font-medium text-foreground">Gender:</span> {profile?.gender ?? "-"}</div>
               <div><span className="font-medium text-foreground">Level:</span> {profile?.ug_pg ?? "-"}</div>
               <div><span className="font-medium text-foreground">Date of Birth:</span> {profile?.dob ? new Date(profile.dob).toLocaleDateString() : "-"}</div>
-              <div><span className="font-medium text-foreground">Discipline:</span> {profile?.discipline ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Location:</span> {profile?.location ?? "-"}</div>
+              <div><span className="font-medium text-foreground">Discipline:</span> {profile?.discipline != null ? (disciplineMap[String(profile.discipline)] ?? String(profile.discipline)) : "-"}</div>
+              <div><span className="font-medium text-foreground">Location:</span> {profile?.location != null ? (locationMap[String(profile.location)] ?? String(profile.location)) : "-"}</div>
               <div><span className="font-medium text-foreground">Role:</span> {profile?.role ?? "-"}</div>
             </div>
             <DropdownMenuSeparator />

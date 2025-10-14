@@ -289,7 +289,7 @@ export default function SignupPage() {
                     className="w-full rounded-md px-3 py-2 bg-card text-foreground border border-border"
                     required
                   >
-                    <option value={1}>Design and Architecture</option>
+                    <option value={1}>Arts, Design and Architecture</option>
                     <option value={2}>Arts</option>
                     <option value={3}>Business and Economics</option>
                     <option value={4}>Education</option>

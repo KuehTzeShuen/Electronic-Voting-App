@@ -19,6 +19,8 @@ export default function NewPollPage() {
   const [votingType, setVotingType] = useState<"single" | "preferential">("single");
   const [startsAt, setStartsAt] = useState<string>("");
   const [endsAt, setEndsAt] = useState<string>("");
+  const [prizes, setPrizes] = useState<string[]>([]);
+  const [newPrize, setNewPrize] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,6 +84,17 @@ export default function NewPollPage() {
     })();
   }, []);
 
+  const addPrize = () => {
+    if (newPrize.trim() && !prizes.includes(newPrize.trim())) {
+      setPrizes([...prizes, newPrize.trim()]);
+      setNewPrize("");
+    }
+  };
+
+  const removePrize = (index: number) => {
+    setPrizes(prizes.filter((_, i) => i !== index));
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -110,6 +123,7 @@ export default function NewPollPage() {
         ends_at: new Date(endsAt).toISOString(),
         host_id: hostId,
         is_published: false,
+        prizes: prizes.length > 0 ? prizes : null,
       };
       const { error } = await supabase.from("campaigns").insert(payload);
       if (error) throw error;
@@ -282,6 +296,40 @@ export default function NewPollPage() {
                   >
                     Toggle
                   </Button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Prizes (optional)</label>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input 
+                      value={newPrize} 
+                      onChange={e => setNewPrize(e.target.value)} 
+                      placeholder="Enter prize name" 
+                      onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), addPrize())}
+                    />
+                    <Button type="button" variant="secondary" onClick={addPrize} disabled={!newPrize.trim()}>
+                      Add
+                    </Button>
+                  </div>
+                  {prizes.length > 0 && (
+                    <div className="space-y-1">
+                      {prizes.map((prize, index) => (
+                        <div key={index} className="flex items-center justify-between bg-muted/30 rounded-md px-3 py-2">
+                          <span className="text-sm">{prize}</span>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => removePrize(index)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 type Campaign = {
   id: string;
@@ -20,7 +19,7 @@ type Campaign = {
 export default function CompletedPollsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [completedCampaigns, setCompletedCampaigns] = useState<Campaign[]>([]);
-  const [roleLoading, setRoleLoading] = useState(true);
+  const [roleLoading] = useState(true);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const router = useRouter();
 
@@ -36,42 +35,7 @@ export default function CompletedPollsPage() {
 
   const [role] = useState<"student" | "admin" | null>(initialRole);
 
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [profile, setProfile] = useState<{ email: string; role: "student" | "admin"; first_name?: string; last_name?: string; student_id?: string; gender?: string; ug_pg?: string; dob?: string; discipline?: string; location?: string; grade?: string } | null>(null);
 
-  // Load profile on mount
-  React.useEffect(() => {
-    (async () => {
-      setRoleLoading(true);
-      try {
-        const stored = localStorage.getItem("appRole");
-        const storedEmail = localStorage.getItem("appEmail");
-        if (stored === "admin" || stored === "student") {
-          // Load detailed profile information immediately
-          if (storedEmail) {
-            try {
-              const { data: userData } = await supabase
-                .from("users")
-                .select("first_name, last_name, student_id, gender, ug_pg, dob, discipline, location, grade")
-                .eq("email", storedEmail)
-                .single();
-              
-              setProfile({ 
-                email: storedEmail, 
-                role: stored as "student" | "admin",
-                ...userData
-              });
-            } catch {
-              // Fallback to basic profile if detailed fetch fails
-              setProfile({ email: storedEmail, role: stored as "student" | "admin" });
-            }
-          }
-        }
-      } finally {
-        setRoleLoading(false);
-      }
-    })();
-  }, []);
 
   // Load campaigns without caching
   React.useEffect(() => {
@@ -103,9 +67,6 @@ export default function CompletedPollsPage() {
     })();
   }, []);
 
-  async function toggleProfile() {
-    setProfileOpen(!profileOpen);
-  }
 
   if (roleLoading) {
     return (

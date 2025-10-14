@@ -1,13 +1,10 @@
 "use client";
 import { useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import React from "react";
-
-// colorPalette no longer used
 
 type Campaign = {
   id: string;
@@ -33,30 +30,12 @@ export default function OngoingPollsPage() {
       return null;
     }
   })();
-  const [role, setRole] = useState<"student" | "admin" | null>(initialRole);
-  const [roleLoading, setRoleLoading] = useState<boolean>(true);
-  const [campaignsLoading, setCampaignsLoading] = useState<boolean>(true);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [profile, setProfile] = useState<{ 
-    email: string | null; 
-    first_name: string | null; 
-    last_name: string | null; 
-    student_id: string | null; 
-    gender: string | null;
-    ug_pg: string | null;
-    dob: string | null;
-    discipline: number | null;
-    location: number | null;
-    grade: string | null;
-    role: string | null 
-  } | null>(null);
-  // Admin add form moved to /polls/new; local inputs removed
 
-  // const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-  // const [cardStyle, setCardStyle] = useState<React.CSSProperties>({});
+  const [role] = useState<"student" | "admin" | null>(initialRole);
+  const [roleLoading] = useState(true);
+  const [campaignsLoading, setCampaignsLoading] = useState(true);
   const router = useRouter();
 
-  // Format remaining time until campaign end
   const formatTimeRemaining = (iso?: string | null): string | null => {
     if (!iso) return null;
     const endMs = new Date(iso).getTime();
@@ -78,123 +57,6 @@ export default function OngoingPollsPage() {
     return `Ending in ${mins} minute${mins !== 1 ? 's' : ''}`;
   };
 
-  // Animation end handler
-  // const handleAnimationEnd = () => {
-  //   if (selectedIdx !== null) {
-  //     router.push(`/poll/${selectedIdx}`);
-  //   }
-  // };
-
-  // When Confirm is clicked
-  // const handleSelect = (idx: number) => {
-  //   const card = cardRefs.current[idx];
-  //   if (card) {
-  //     const rect = card.getBoundingClientRect();
-  //     const scrollY = window.scrollY || window.pageYOffset;
-  //     const scrollX = window.scrollX || window.pageXOffset;
-  //     // Calculate the card's center
-  //     const cardCenterX = rect.left + rect.width / 2 + scrollX;
-  //     const cardCenterY = rect.top + rect.height / 2 + scrollY;
-  //     // Calculate the viewport center
-  //     const viewportCenterX = window.innerWidth / 2;
-  //     const viewportCenterY = window.innerHeight / 2;
-  //     // Calculate translation needed
-  //     const translateX = viewportCenterX - cardCenterX;
-  //     const translateY = viewportCenterY - cardCenterY;
-  //     setCardStyle({
-  //       position: "absolute",
-  //       left: rect.left + scrollX,
-  //       top: rect.top + scrollY,
-  //       width: rect.width,
-  //       height: rect.height,
-  //       zIndex: 50,
-  //       transition: "transform 0.7s cubic-bezier(0.4,0,0.2,1), opacity 0.7s",
-  //       transform: `translate(0px, 0px) scale(1)`,
-  //     });
-  //     setSelectedIdx(idx);
-  //     // Animate to center after a tick
-  //     setTimeout(() => {
-  //       // Calculate scale factors
-  //       const targetWidth = window.innerWidth * 0.9;
-  //       const targetHeight = window.innerHeight * 0.8;
-  //       const scaleX = targetWidth / rect.width;
-  //       const scaleY = targetHeight / rect.height;
-  //       setCardStyle((prev: React.CSSProperties) => ({
-  //         ...prev,
-  //         transform: `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`,
-  //         boxShadow: "0 10px 40px 0 rgba(0,0,0,0.3)",
-  //       }));
-  //     }, 10);
-  //   }
-  // };
-
-  // Hydrate role once; show skeleton until resolved
-  React.useEffect(() => {
-    (async () => {
-      try {
-        // Check authentication using localStorage (same as login page)
-        let email: string | null = null;
-        let storedRole: string | null = null;
-        
-        try {
-          email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
-          storedRole = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
-        } catch {
-          // localStorage not available
-        }
-        
-        if (!email || !storedRole) {
-          // No authentication data, redirect to login
-          router.push("/");
-          return;
-        }
-        
-        // Verify the user exists in the database
-        const { data, error: fetchError } = await supabase
-          .from("users")
-          .select("role")
-          .eq("email", email)
-          .eq("role", storedRole)
-          .maybeSingle();
-          
-        if (fetchError || !data) {
-          // User not found or error, redirect to login
-          router.push("/");
-          return;
-        }
-        
-        // Set the role from localStorage (which was validated against DB)
-        setRole(storedRole as "student" | "admin");
-      } finally {
-        setRoleLoading(false);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Track code input keyed by campaign id
-  const handleCodeChange = (id: string, value: string) => {
-    setCodes(prev => ({ ...prev, [id]: value }));
-  };
-
-  // Join with code (basic client-side check then navigate)
-  const handleJoin = async (id: string) => {
-    const code = (codes[id] || "").trim();
-    if (!code) return; // require a non-empty code
-    // Check code against campaigns
-    const { data } = await supabase
-      .from("campaigns")
-      .select("id")
-      .eq("id", id)
-      .eq("code", code)
-      .maybeSingle();
-    if (!data) {
-      alert("Invalid access code for this poll");
-      return;
-    }
-    router.push(`/poll/${id}`);
-  };
-
   // Load campaigns without caching
   React.useEffect(() => {
     (async () => {
@@ -211,14 +73,12 @@ export default function OngoingPollsPage() {
           const allCampaigns = data as Campaign[];
           setCampaigns(allCampaigns);
           
-          // Separate ongoing and completed polls
+          // Filter for ongoing polls
           const now = new Date().toISOString();
           const ongoing = allCampaigns.filter(c => 
+            c.starts_at && new Date(c.starts_at).toISOString() <= now &&
             c.ends_at && new Date(c.ends_at).toISOString() > now
           );
-          // const completed = allCampaigns.filter(c => 
-          //   c.ends_at && new Date(c.ends_at).toISOString() <= now
-          // );
           
           setOngoingCampaigns(ongoing);
         }
@@ -227,82 +87,6 @@ export default function OngoingPollsPage() {
       }
     })();
   }, []);
-
-  async function toggleProfile() {
-    const nextOpen = !profileOpen;
-    setProfileOpen(nextOpen);
-    if (nextOpen && !profile) {
-      let userRow: { 
-        email: string | null; 
-        first_name: string | null; 
-        last_name: string | null; 
-        student_id: string | null; 
-        gender: string | null;
-        ug_pg: string | null;
-        dob: string | null;
-        discipline: number | null;
-        location: number | null;
-        grade: string | null;
-        role: string | null 
-      } | null = null;
-      
-      // First try to get user from Supabase auth
-      try {
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (!authError && user?.id) {
-          const { data } = await supabase
-            .from("users")
-            .select("email, first_name, last_name, student_id, gender, ug_pg, dob, discipline, location, grade, role")
-            .eq("auth_id", user.id)
-            .limit(1)
-            .maybeSingle();
-          if (data) userRow = data;
-        }
-      } catch {}
-      
-      // Fallback to localStorage email if auth user not found
-      if (!userRow) {
-        let email: string | null = null;
-        try {
-          email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
-        } catch {
-          // localStorage not available
-        }
-        if (email) {
-          const { data } = await supabase
-            .from("users")
-            .select("email, first_name, last_name, student_id, gender, ug_pg, dob, discipline, location, grade, role")
-            .eq("email", email)
-            .limit(1)
-            .maybeSingle();
-          if (data) userRow = data;
-        }
-      }
-      
-      // Role should reflect the user's chosen session role only (not DB),
-      // so prefer localStorage appRole, falling back to current in-memory role.
-      let resolvedRole: string | null = null;
-      try {
-        const stored = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
-        if (stored === "admin" || stored === "student") resolvedRole = stored;
-      } catch {}
-      if (!resolvedRole) resolvedRole = role;
-      
-      setProfile({
-        email: userRow?.email ?? null,
-        first_name: userRow?.first_name ?? null,
-        last_name: userRow?.last_name ?? null,
-        student_id: userRow?.student_id ?? null,
-        gender: userRow?.gender ?? null,
-        ug_pg: userRow?.ug_pg ?? null,
-        dob: userRow?.dob ?? null,
-        discipline: userRow?.discipline ?? null,
-        location: userRow?.location ?? null,
-        grade: userRow?.grade ?? null,
-        role: resolvedRole,
-      });
-    }
-  }
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -332,10 +116,6 @@ export default function OngoingPollsPage() {
       <header className="w-full px-6 pt-8 pb-4 flex items-center justify-between relative z-10">
         <h1 className="text-foreground text-2xl font-semibold">Polls</h1>
       </header>
-
-      {/* Profile modal moved to global navbar */}
-
-      {/* Admin add form moved to /polls/new */}
 
       <main className="w-full px-4 pt-6 pb-10 space-y-6 relative z-10">
         {(roleLoading || campaignsLoading) && (
@@ -397,7 +177,10 @@ export default function OngoingPollsPage() {
                       ) : (
                         <div className="flex items-center gap-2 mt-4">
                           <Button size="sm" variant="secondary" className="hover:bg-white/10" onClick={() => router.push(`/poll/${c.id}/results`)}>
-                            View votes
+                            View Results
+                          </Button>
+                          <Button size="sm" variant="secondary" className="hover:bg-white/10" onClick={() => router.push(`/poll/${c.id}/summary`)}>
+                            View Summary
                           </Button>
                         </div>
                       )}
@@ -415,4 +198,32 @@ export default function OngoingPollsPage() {
       </main>
     </div>
   );
+
+  function handleCodeChange(campaignId: string, value: string) {
+    setCodes(prev => ({ ...prev, [campaignId]: value }));
+  }
+
+  async function handleJoin(campaignId: string) {
+    const code = codes[campaignId];
+    if (!code || code.trim().length === 0) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("campaigns")
+        .select("code")
+        .eq("id", campaignId)
+        .single();
+      
+      if (error) throw error;
+      
+      if (data.code === code.trim()) {
+        router.push(`/poll/${campaignId}`);
+      } else {
+        alert("Invalid access code");
+      }
+    } catch (error) {
+      console.error("Error joining campaign:", error);
+      alert("Failed to join campaign");
+    }
+  }
 }

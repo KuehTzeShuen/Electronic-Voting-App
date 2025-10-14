@@ -4,7 +4,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import PreferentialPoll from "@/components/PreferentialPoll";
 
 export default function PollDetailPage() {
   const params = useParams();
@@ -30,6 +29,27 @@ export default function PollDetailPage() {
   const [loading, setLoading] = useState(true);
   const [campaignLoading, setCampaignLoading] = useState(true);
   // const [showReward, setShowReward] = useState(false);
+
+  const formatTimeRemaining = (iso?: string | null): string | null => {
+    if (!iso) return null;
+    const endMs = new Date(iso).getTime();
+    const nowMs = Date.now();
+    const diffMs = endMs - nowMs;
+    if (isNaN(endMs)) return null;
+    if (diffMs <= 0) return "Ended";
+    const totalMinutes = Math.floor(diffMs / 60000);
+    const totalHours = Math.floor(totalMinutes / 60);
+    const totalDays = Math.floor(totalHours / 24);
+    if (totalDays >= 1) {
+      const days = totalDays + (totalHours % 24 > 0 || totalMinutes % 60 > 0 ? 1 : 0); // round up partial days
+      return `Ending in ${days} day${days !== 1 ? 's' : ''}`;
+    }
+    if (totalHours >= 1) {
+      return `Ending in ${totalHours} hour${totalHours !== 1 ? 's' : ''}`;
+    }
+    const mins = Math.max(1, totalMinutes); // show at least 1 minute
+    return `Ending in ${mins} minute${mins !== 1 ? 's' : ''}`;
+  };
 
   // 🧠 Load campaign details with caching
   useEffect(() => {
@@ -154,14 +174,7 @@ export default function PollDetailPage() {
       }
 
       // Check if this voter already voted in this campaign
-      let voterId: string;
-      try {
-        voterId = await getVoterId();
-      } catch (error) {
-        console.error("Authentication error:", error);
-        setLoading(false);
-        return;
-      }
+      const voterId = await getVoterId();
       
       // Check for existing vote based on campaign type
       if (campaign?.vote_type === "single") {
@@ -270,7 +283,6 @@ export default function PollDetailPage() {
     }
 
     setSubmitting("yes");
-    const voterId = await getVoterId();
 
     try {
       if (votedOptionId) {
@@ -278,13 +290,14 @@ export default function PollDetailPage() {
         return;
       }
 
-      let voterId: string;
       try {
-        voterId = await getVoterId();
+        await getVoterId();
       } catch (error) {
         setVoteMsg(error instanceof Error ? error.message : "Authentication error. Please log in again.");
         return;
       }
+
+      const voterId = await getVoterId();
 
       console.log('Campaign vote_type:', campaign?.vote_type);
       console.log('Campaign object:', campaign);
@@ -377,7 +390,7 @@ export default function PollDetailPage() {
 
       setSelectedOptionIds([]);
       localStorage.removeItem(`options-${id}`);
-    } catch (e) {
+    } catch {
       setVoteMsg("Failed to submit vote");
     } finally {
       setSubmitting(null);
@@ -385,7 +398,7 @@ export default function PollDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground px-6 py-8">
+    <div className="min-h-screen bg-background text-foreground px-6 py-8 max-w-4xl mx-auto">
       <h1 className="text-foreground text-2xl font-semibold mb-6">Cast Your Vote</h1>
 
       {campaignLoading ? (
@@ -397,17 +410,21 @@ export default function PollDetailPage() {
       ) : (
         <>
           {campaign?.club && (
-            <div className="text-sm text-muted-foreground font-medium">{campaign.club}</div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
+              <span>{campaign.club}</span>
+              {campaign?.ends_at && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-medium bg-red-500/15 text-red-400 border-red-500/30">
+                  {formatTimeRemaining(campaign.ends_at) ?? 'Ending soon'}
+                </span>
+              )}
+            </div>
           )}
           <h1 className="text-foreground text-lg font-semibold mt-2">
             {campaign?.title || `Poll`}
           </h1>
           {campaign?.description && (
-            <div className="text-muted-foreground text-xs mt-1">{campaign.description}</div>
+            <div className="text-muted-foreground text-xs mt-1 mb-4">{campaign.description}</div>
           )}
-          <div className="text-muted-foreground text-xs mb-6 mt-1">
-            {formatDateRange(campaign?.starts_at, campaign?.ends_at)}
-          </div>
         </>
       )}
 
@@ -537,16 +554,3 @@ export default function PollDetailPage() {
   );
 }
 
-function formatDateRange(starts?: string | null, ends?: string | null) {
-  const fmt = (iso?: string | null) => {
-    if (!iso) return null;
-    const d = new Date(iso);
-    return `${d.toLocaleDateString("en-GB")} ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
-  };
-  const a = fmt(starts);
-  const b = fmt(ends);
-  if (a && b) return `Starts: ${a} • Ends: ${b}`;
-  if (a) return `Starts: ${a}`;
-  if (b) return `Ends: ${b}`;
-  return "";
-}

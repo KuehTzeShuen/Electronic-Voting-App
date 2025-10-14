@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -76,7 +75,19 @@ export default function Navbar() {
       try {
         // Prefer Supabase auth user → users table by auth_id
         const { data: { user } } = await supabase.auth.getUser();
-        let row: any = null;
+        let row: { 
+          email: string | null;
+          first_name: string | null;
+          last_name: string | null;
+          student_id: string | null;
+          gender: string | null;
+          ug_pg: string | null;
+          dob: string | null;
+          discipline: number | null;
+          location: number | null;
+          grade: string | null;
+          role: string;
+        } | null = null;
         if (user?.id) {
           const { data } = await supabase
             .from("users")
@@ -119,7 +130,7 @@ export default function Navbar() {
         });
       } catch {}
     })();
-  }, []);
+  }, [email, role]);
 
   const links = [
     { name: "Polls", href: "/polling-menu" },

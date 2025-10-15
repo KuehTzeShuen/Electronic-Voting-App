@@ -29,7 +29,7 @@ describe('Signup Page', () => {
     render(<SignupPage />)
     
     expect(screen.getByRole('heading', { name: 'Sign up' })).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('you@university.edu')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('you@student.monash.edu')).toBeInTheDocument()
     expect(screen.getByText('Sign up using your student email')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /send code/i })).toBeInTheDocument()
   })
@@ -50,7 +50,7 @@ describe('Signup Page', () => {
     const user = userEvent.setup()
     render(<SignupPage />)
     
-    const emailInput = screen.getByPlaceholderText('you@university.edu')
+    const emailInput = screen.getByPlaceholderText('you@student.monash.edu')
     const submitButton = screen.getByRole('button', { name: /send code/i })
     
     await user.type(emailInput, 'invalid-email')
@@ -77,15 +77,15 @@ describe('Signup Page', () => {
     render(<SignupPage />)
     
     // Fill out the form
-    const emailInput = screen.getByPlaceholderText('you@university.edu')
+    const emailInput = screen.getByPlaceholderText('you@student.monash.edu')
     const submitButton = screen.getByRole('button', { name: /send code/i })
     
-    await user.type(emailInput, 'test@example.com')
+    await user.type(emailInput, 'test@student.monash.edu')
     await user.click(submitButton)
     
     await waitFor(() => {
       expect(mockSignInWithOtp).toHaveBeenCalledWith({
-        email: 'test@example.com',
+        email: 'test@student.monash.edu',
         options: { shouldCreateUser: true },
       })
     })
@@ -110,10 +110,10 @@ describe('Signup Page', () => {
     render(<SignupPage />)
     
     // Fill out minimal required fields
-    const emailInput = screen.getByPlaceholderText('you@university.edu')
+    const emailInput = screen.getByPlaceholderText('you@student.monash.edu')
     const submitButton = screen.getByRole('button', { name: /send code/i })
     
-    await user.type(emailInput, 'test@example.com')
+    await user.type(emailInput, 'test@student.monash.edu')
     await user.click(submitButton)
     
     await waitFor(() => {
@@ -139,10 +139,10 @@ describe('Signup Page', () => {
     render(<SignupPage />)
     
     // Fill out minimal required fields
-    const emailInput = screen.getByPlaceholderText('you@university.edu')
+    const emailInput = screen.getByPlaceholderText('you@student.monash.edu')
     const submitButton = screen.getByRole('button', { name: /send code/i })
     
-    await user.type(emailInput, 'test@example.com')
+    await user.type(emailInput, 'test@student.monash.edu')
     await user.click(submitButton)
     
     expect(screen.getByText(/sending/i)).toBeInTheDocument()

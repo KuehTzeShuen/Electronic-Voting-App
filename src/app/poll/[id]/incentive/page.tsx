@@ -5,13 +5,11 @@ import { motion, useAnimation, AnimatePresence, type Transition } from "framer-m
 import { useRouter, useParams } from "next/navigation";
 
 type Rarity =
-  | "Consumer"
-  | "Industrial"
-  | "Mil-Spec"
-  | "Restricted"
-  | "Classified"
-  | "Covert"
-  | "Exceedingly Rare";
+  | "Common"
+  | "Uncommon"
+  | "Rare"
+  | "Epic"
+  | "Legendary";
 
 interface Item {
   id: string;
@@ -22,60 +20,47 @@ interface Item {
 }
 
 
-/**
- * Palette mapped to your app tokens.
- * Feel free to tweak the hues; the important bit is we stick to theme variables.
- */
+
 const RARITY_STYLES: Record<
   Rarity,
   { bg: string; ring: string; text: string }
 > = {
-  Consumer: {
+  Common: {
     bg: "bg-muted",
     ring: "ring-border",
     text: "text-foreground",
   },
-  Industrial: {
+  Uncommon: {
     bg: "bg-cyan-600/20",
     ring: "ring-cyan-500/40",
     text: "text-cyan-200",
   },
-  "Mil-Spec": {
+  Rare: {
     bg: "bg-blue-600/20",
     ring: "ring-blue-500/40",
     text: "text-blue-200",
   },
-  Restricted: {
+  Epic: {
     bg: "bg-purple-600/20",
     ring: "ring-purple-500/40",
     text: "text-purple-200",
   },
-  Classified: {
+  Legendary: {
     bg: "bg-pink-600/20",
     ring: "ring-pink-500/40",
     text: "text-pink-200",
   },
-  Covert: {
-    bg: "bg-red-600/20",
-    ring: "ring-red-500/40",
-    text: "text-red-200",
-  },
-  "Exceedingly Rare": {
-    bg: "bg-yellow-400/20",
-    ring: "ring-yellow-300/40",
-    text: "text-yellow-100",
-  },
 };
 
 const POOL: Item[] = [
-  { id: "1", name: "Nothing", rarity: "Consumer", weight: 300, emoji: "❌" },
-  { id: "2", name: "Sticker", rarity: "Consumer", weight: 200, emoji: "🏷️" },
-  { id: "3", name: "Pen", rarity: "Industrial", weight: 150, emoji: "🖊️" },
-  { id: "4", name: "Notebook", rarity: "Mil-Spec", weight: 120, emoji: "📓" },
-  { id: "5", name: "Hoodie", rarity: "Restricted", weight: 80, emoji: "🧥" },
-  { id: "6", name: "Cap", rarity: "Classified", weight: 50, emoji: "🧢" },
-  { id: "7", name: "Keychain", rarity: "Covert", weight: 20, emoji: "🔑" },
-  { id: "8", name: "Giftcard", rarity: "Exceedingly Rare", weight: 5, emoji: "🎁" },
+  { id: "1", name: "Nothing", rarity: "Common", weight: 300, emoji: "❌" },
+  { id: "2", name: "Sticker", rarity: "Common", weight: 200, emoji: "🏷️" },
+  { id: "3", name: "Pen", rarity: "Common", weight: 150, emoji: "🖊️" },
+  { id: "4", name: "Notebook", rarity: "Uncommon", weight: 120, emoji: "📓" },
+  { id: "5", name: "Hoodie", rarity: "Epic", weight: 80, emoji: "🧥" },
+  { id: "6", name: "Cap", rarity: "Rare", weight: 50, emoji: "🧢" },
+  { id: "7", name: "Keychain", rarity: "Uncommon", weight: 20, emoji: "🔑" },
+  { id: "8", name: "Giftcard", rarity: "Legendary", weight: 5, emoji: "🎁" },
 ];
 
 const TILE_W = 120;

@@ -151,6 +151,16 @@ export default function PollDetailPage() {
         await fetchAndCacheOptions();
       }
 
+      function shuffleArray<T>(array: T[]): T[] {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+      }
+
+
       async function fetchAndCacheOptions() {
         const { data: opt } = await supabase
           .from("campaign_options")
@@ -159,9 +169,9 @@ export default function PollDetailPage() {
           .order("label", { ascending: true });
         
         if (Array.isArray(opt)) {
-          const optionsData = opt as { id: string; label: string; description: string | null }[];
+          let optionsData = opt as { id: string; label: string; description: string | null }[];
+          optionsData = shuffleArray(optionsData);
           setOptions(optionsData);
-          // Cache the options
           try {
             localStorage.setItem(OPTIONS_CACHE_KEY, JSON.stringify({
               data: optionsData,

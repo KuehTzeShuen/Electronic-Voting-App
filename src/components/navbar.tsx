@@ -135,6 +135,7 @@ export default function Navbar() {
   const links = [
     { name: "Polls", href: "/polling-menu" },
     { name: "Completed Polls", href: "/polling-menu/completed" },
+    { name: "Help", href: "/help" },
   ];
 
   return (

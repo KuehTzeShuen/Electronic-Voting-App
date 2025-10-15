@@ -458,22 +458,26 @@ export default function SummaryDatasetOnly() {
 
   // ---- Export button ----
   const handleExport = () => {
+    // Transform dataset to use human-readable values
+    const transformedDataset = dataset.map(row => ({
+      ...row,
+      discipline: normDiscipline(row.discipline),
+      location: normLocation(row.location),
+    }));
+    
     const columns = [
-      { key: "voter_id",     header: "Voter ID" },
-      { key: "option_id",    header: "Option ID" },
-      { key: "option_label", header: "Option Label" },
-      { key: "created_at",   header: "Created At" },
+      { key: "option_label", header: "Candidate" },
       { key: "discipline",   header: "Discipline" },
       { key: "gender",       header: "Gender" },
       { key: "location",     header: "Location" },
       { key: "ug_pg",        header: "UG/PG" },
     ];
-    const csv = toCsv(dataset, columns);
-    downloadCsv(csv, `poll_${id}_dataset.csv`);
+    const csv = toCsv(transformedDataset, columns);
+    downloadCsv(csv, `${campaign?.label ?? 'Poll'} Analytical Results.csv`);
   };
 
   return (
-    <div className="p-4">
+    <div className="p-4 max-w-4xl mx-auto">
       {/* Top bar */}
       <div className="flex items-center justify-between mb-6">
         {/* Left: Title */}

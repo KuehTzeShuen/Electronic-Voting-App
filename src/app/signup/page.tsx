@@ -19,7 +19,6 @@ export default function SignupPage() {
   const [dob, setDob] = useState("");
   const [discipline, setDiscipline] = useState<number>(1);
   const [location, setLocation] = useState<number>(1);
-  const [grade, setGrade] = useState<"N" | "P" | "C" | "D" | "HD">("N");
   const [role, setRole] = useState<"student" | "admin">("student");
   const [step, setStep] = useState<"email" | "otp" | "details">("email");
   const [loading, setLoading] = useState(false);
@@ -42,11 +41,29 @@ export default function SignupPage() {
     setError(null);
     setLoading(true);
     try {
+      // Let native form validation handle invalid email and show the browser popup
+      const emailInput = document.getElementById("email") as HTMLInputElement | null;
+      if (emailInput) {
+        // Ensure domain restriction surfaces as a native popup
+        const value = emailInput.value.trim();
+        const isMonash = /@student\.monash\.edu$/i.test(value);
+        if (!isMonash) {
+          emailInput.setCustomValidity("Email must be a @student.monash.edu address");
+        }
+      }
+      if (emailInput && !emailInput.checkValidity()) {
+        emailInput.reportValidity();
+        setLoading(false);
+        return;
+      }
+
+      const emailLower = email.trim().toLowerCase();
+
       // If an account already exists for this email, prompt to login instead
       const { data: existing, error: existingErr } = await supabase
         .from("users")
         .select("student_id")
-        .eq("email", email)
+        .eq("email", emailLower)
         .eq("role", role)
         .limit(1)
         .maybeSingle();
@@ -57,7 +74,7 @@ export default function SignupPage() {
       }
 
       const { error: signInError } = await supabase.auth.signInWithOtp({
-        email,
+        email: emailLower,
         options: { shouldCreateUser: true },
       });
       if (signInError) throw signInError;
@@ -110,7 +127,6 @@ export default function SignupPage() {
         dob,
         discipline,
         location,
-        grade,
         role,
         created_at: new Date().toISOString(),
       });
@@ -134,6 +150,28 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center relative overflow-hidden">
+      {/* Background Shapes */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Large gradient circles */}
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl animate-float"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-secondary/20 to-transparent rounded-full blur-3xl animate-float-delayed"></div>
+        
+        {/* Medium shapes */}
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-gradient-to-br from-accent/10 to-transparent rounded-full blur-2xl animate-float"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-gradient-to-tl from-primary/15 to-transparent rounded-full blur-xl animate-float-delayed"></div>
+        
+        {/* Small accent shapes */}
+        <div className="absolute top-1/3 right-1/3 w-16 h-16 bg-gradient-to-br from-chart-1/20 to-transparent rounded-full blur-lg animate-float"></div>
+        <div className="absolute bottom-1/3 left-1/3 w-20 h-20 bg-gradient-to-tl from-chart-2/15 to-transparent rounded-full blur-lg animate-float-delayed"></div>
+        
+        {/* Additional decorative elements */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-primary/30 rounded-full animate-pulse"></div>
+        <div className="absolute top-1/6 right-1/6 w-1 h-1 bg-chart-3/40 rounded-full animate-pulse" style={{animationDelay: '1s'}}></div>
+        <div className="absolute bottom-1/6 left-1/6 w-1.5 h-1.5 bg-chart-4/30 rounded-full animate-pulse" style={{animationDelay: '2s'}}></div>
+        
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
+      </div>
       <header className="w-full px-6 pt-8 pb-6 relative z-10">
         <h1 className="text-foreground text-2xl font-semibold">Sign up</h1>
       </header>
@@ -151,7 +189,18 @@ export default function SignupPage() {
             <form onSubmit={sendOtp} className="flex flex-col gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@university.edu" required />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onInput={e => (e.currentTarget as HTMLInputElement).setCustomValidity("")}
+                  onInvalid={e => (e.currentTarget as HTMLInputElement).setCustomValidity("Email must be a @student.monash.edu address")}
+                  placeholder="you@student.monash.edu"
+                  pattern="^[A-Za-z0-9._%+-]+@student\.monash\.edu$"
+                  title="Email must be a @student.monash.edu address"
+                  required
+                />
               </div>
               <div className="grid gap-2">
                 <Label>Role</Label>
@@ -247,16 +296,17 @@ export default function SignupPage() {
                 </div>
               </div>
               
-              <div className="grid gap-2">
-                <Label htmlFor="dob">Date of Birth</Label>
-                <Input 
-                  id="dob" 
-                  type="date" 
-                  value={dob} 
-                  onChange={e => setDob(e.target.value)} 
-                  required 
-                />
-              </div>
+      <div className="grid gap-2">
+        <Label htmlFor="dob">Date of Birth</Label>
+        <Input 
+          id="dob" 
+          type="date" 
+          value={dob} 
+          onChange={e => setDob(e.target.value)} 
+          required 
+          className="[&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
+        />
+      </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
@@ -268,15 +318,16 @@ export default function SignupPage() {
                     className="w-full rounded-md px-3 py-2 bg-card text-foreground border border-border"
                     required
                   >
-                    <option value={1}>1</option>
-                    <option value={2}>2</option>
-                    <option value={3}>3</option>
-                    <option value={4}>4</option>
-                    <option value={5}>5</option>
-                    <option value={6}>6</option>
-                    <option value={7}>7</option>
-                    <option value={8}>8</option>
-                    <option value={9}>9</option>
+                    <option value={1}>Arts, Design and Architecture</option>
+                    <option value={2}>Arts</option>
+                    <option value={3}>Business and Economics</option>
+                    <option value={4}>Education</option>
+                    <option value={5}>Engineering</option>
+                    <option value={6}>Information Technology</option>
+                    <option value={7}>Law</option>
+                    <option value={8}>Medicine, Nursing and Health Sciences</option>
+                    <option value={9}>Pharmacy and Pharmaceutical Sciences</option>
+                    <option value={10}>Science</option>
                   </select>
                 </div>
                 <div className="grid gap-2">
@@ -288,31 +339,16 @@ export default function SignupPage() {
                     className="w-full rounded-md px-3 py-2 bg-card text-foreground border border-border"
                     required
                   >
-                    <option value={1}>1</option>
-                    <option value={2}>2</option>
-                    <option value={3}>3</option>
-                    <option value={4}>4</option>
-                    <option value={5}>5</option>
+                    <option value={1}>Clayton</option>
+                    <option value={2}>Caulfield</option>
+                    <option value={3}>Peninsula</option>
+                    <option value={4}>Parkville</option>
+                    <option value={5}>Malaysia</option>
+                    <option value={6}>Other</option>
                   </select>
                 </div>
               </div>
               
-              <div className="grid gap-2">
-                <Label htmlFor="grade">Grade</Label>
-                <select 
-                  id="grade" 
-                  value={grade} 
-                  onChange={e => setGrade(e.target.value as "N" | "P" | "C" | "D" | "HD")}
-                  className="w-full rounded-md px-3 py-2 bg-card text-foreground border border-border"
-                  required
-                >
-                  <option value="N">N</option>
-                  <option value="P">P</option>
-                  <option value="C">C</option>
-                  <option value="D">D</option>
-                  <option value="HD">HD</option>
-                </select>
-              </div>
               
               <Button type="submit" disabled={loading} className="w-full">
                 {loading ? "Saving..." : "Continue"}

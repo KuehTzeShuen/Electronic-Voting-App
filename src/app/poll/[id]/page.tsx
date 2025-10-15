@@ -2,57 +2,81 @@
 
 // import { generateUUID } from "@/lib/uuid";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { useRouter } from "next/navigation";
 
 export default function PollDetailPage() {
   const params = useParams();
-  const id = Array.isArray(params?.id) ? params?.id[0] : (params?.id as string);
+  const router = useRouter();
+  const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
+
   const [role, setRole] = useState<"student" | "admin">("student");
   const [options, setOptions] = useState<{ id: string; label: string; description: string | null }[]>([]);
-  const [campaign, setCampaign] = useState<{ title: string; description: string | null; club: string | null; starts_at: string | null; ends_at: string | null; vote_type?: "single" | "preferential"; } | null>(null);
-  const router = useRouter();
+  const [campaign, setCampaign] = useState<{
+    title: string;
+    description: string | null;
+    club: string | null;
+    starts_at: string | null;
+    ends_at: string | null;
+    vote_type?: "single" | "preferential";
+  } | null>(null);
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [voteMsg, setVoteMsg] = useState<string | null>(null);
   const [votedOptionId, setVotedOptionId] = useState<string | null>(null);
   const [votedOptions, setVotedOptions] = useState<{id: string, label: string, rank?: number}[]>([]);
   const [selectedOptionId] = useState<string | null>(null);
+  const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [campaignLoading, setCampaignLoading] = useState(true);
   // const [showReward, setShowReward] = useState(false);
 
-  const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
+  const formatTimeRemaining = (iso?: string | null): string | null => {
+    if (!iso) return null;
+    const endMs = new Date(iso).getTime();
+    const nowMs = Date.now();
+    const diffMs = endMs - nowMs;
+    if (isNaN(endMs)) return null;
+    if (diffMs <= 0) return "Ended";
+    const totalMinutes = Math.floor(diffMs / 60000);
+    const totalHours = Math.floor(totalMinutes / 60);
+    const totalDays = Math.floor(totalHours / 24);
+    if (totalDays >= 1) {
+      const days = totalDays + (totalHours % 24 > 0 || totalMinutes % 60 > 0 ? 1 : 0); // round up partial days
+      return `Ending in ${days} day${days !== 1 ? 's' : ''}`;
+    }
+    if (totalHours >= 1) {
+      return `Ending in ${totalHours} hour${totalHours !== 1 ? 's' : ''}`;
+    }
+    const mins = Math.max(1, totalMinutes); // show at least 1 minute
+    return `Ending in ${mins} minute${mins !== 1 ? 's' : ''}`;
+  };
 
-
-  // Load campaign details immediately with caching
+  // 🧠 Load campaign details with caching
   useEffect(() => {
     (async () => {
       const CACHE_KEY = `campaign-${id}`;
-      const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
-      
-      // Try to load from cache first
+      const CACHE_DURATION = 10 * 60 * 1000; // 10 mins
+
       try {
         const cached = localStorage.getItem(CACHE_KEY);
         if (cached) {
-          const { data: cachedData, timestamp } = JSON.parse(cached);
+          const { data, timestamp } = JSON.parse(cached);
           if (Date.now() - timestamp < CACHE_DURATION) {
-            setCampaign(cachedData);
+            setCampaign(data);
             setCampaignLoading(false);
-            return; // Use cached data
+            return;
           }
         }
       } catch {
         // Cache invalid, continue to fetch
       }
 
-      // Fetch fresh data
       const { data: camp } = await supabase
         .from("campaigns")
         .select("title, description, club, starts_at, ends_at, vote_type")
         .eq("id", id)
         .maybeSingle();
-      
+
       if (camp) {
         const campaignData = camp as { title: string; description: string | null; club: string | null; starts_at: string | null; ends_at: string | null; vote_type?: "single" | "preferential" };
         setCampaign(campaignData);
@@ -70,7 +94,7 @@ export default function PollDetailPage() {
     })();
   }, [id]);
 
-  // Load user role, options, and vote status
+  // ⚙️ Load user, role, options, and vote status
   useEffect(() => {
     (async () => {
       // Check authentication using localStorage (same as login page)
@@ -85,29 +109,25 @@ export default function PollDetailPage() {
       }
       
       if (!email || !storedRole) {
-        // No authentication data, redirect to login
         router.push("/");
         return;
       }
-      
-      // Verify the user exists in the database
-      const { data, error: fetchError } = await supabase
+
+      const { data: user } = await supabase
         .from("users")
         .select("role")
         .eq("email", email)
         .eq("role", storedRole)
         .maybeSingle();
-        
-      if (fetchError || !data) {
-        // User not found or error, redirect to login
+
+      if (!user) {
         router.push("/");
         return;
       }
-      
-      // Set the role from localStorage (which was validated against DB)
+
       setRole(storedRole as "student" | "admin");
-      
-      // Load options for this campaign with caching
+
+      // 🧩 Load and randomise options
       const OPTIONS_CACHE_KEY = `options-${id}`;
       const OPTIONS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
       
@@ -131,6 +151,16 @@ export default function PollDetailPage() {
         await fetchAndCacheOptions();
       }
 
+      function shuffleArray<T>(array: T[]): T[] {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+      }
+
+
       async function fetchAndCacheOptions() {
         const { data: opt } = await supabase
           .from("campaign_options")
@@ -139,9 +169,9 @@ export default function PollDetailPage() {
           .order("label", { ascending: true });
         
         if (Array.isArray(opt)) {
-          const optionsData = opt as { id: string; label: string; description: string | null }[];
+          let optionsData = opt as { id: string; label: string; description: string | null }[];
+          optionsData = shuffleArray(optionsData);
           setOptions(optionsData);
-          // Cache the options
           try {
             localStorage.setItem(OPTIONS_CACHE_KEY, JSON.stringify({
               data: optionsData,
@@ -154,14 +184,7 @@ export default function PollDetailPage() {
       }
 
       // Check if this voter already voted in this campaign
-      let voterId: string;
-      try {
-        voterId = await getVoterId();
-      } catch (error) {
-        console.error("Authentication error:", error);
-        setLoading(false);
-        return;
-      }
+      const voterId = await getVoterId();
       
       // Check for existing vote based on campaign type
       if (campaign?.vote_type === "single") {
@@ -207,6 +230,7 @@ export default function PollDetailPage() {
     })();
   }, [id, router, campaign?.vote_type, options]);
 
+  // 🆔 Get or generate unique voter ID
   async function getVoterId(): Promise<string> {
     // Check localStorage for authentication (your app's auth system)
     const appEmail = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
@@ -262,14 +286,12 @@ export default function PollDetailPage() {
     }
   };
 
-
   const castVote = async () => {
     if (selectedOptionIds.length === 0) {
       setVoteMsg("Please select at least one candidate.");
       return;
     }
 
-    setVoteMsg(null);
     setSubmitting("yes");
 
     try {
@@ -278,13 +300,14 @@ export default function PollDetailPage() {
         return;
       }
 
-      let voterId: string;
       try {
-        voterId = await getVoterId();
+        await getVoterId();
       } catch (error) {
         setVoteMsg(error instanceof Error ? error.message : "Authentication error. Please log in again.");
         return;
       }
+
+      const voterId = await getVoterId();
 
       console.log('Campaign vote_type:', campaign?.vote_type);
       console.log('Campaign object:', campaign);
@@ -346,12 +369,14 @@ export default function PollDetailPage() {
 
         // Get next available IDs and insert preferential votes with rank
         const baseId = await getNextVoteId('votes_preferential');
+        const maxPoints = selectedOptionIds.length;
         const payloads = selectedOptionIds.map((optId, i) => ({
           id: baseId + i, // Sequential IDs starting from baseId
           campaign_id: id,
           option_id: optId,
           voter_id: voterId,
-          rank: i + 1, // order of selection
+          rank: i + 1,
+          points: maxPoints - i,
           created_at: new Date().toISOString(),
         }));
         console.log('Inserting into votes_preferential table:', payloads);
@@ -374,25 +399,18 @@ export default function PollDetailPage() {
       }
 
       setSelectedOptionIds([]);
-
-      try {
-        localStorage.removeItem(`options-${id}`);
-      } catch {}
-    } catch (e) {
-      const msg =
-        e && typeof e === "object" && "message" in e
-          ? String((e as { message?: unknown }).message)
-          : "Failed to submit vote";
-      setVoteMsg(msg);
+      localStorage.removeItem(`options-${id}`);
+    } catch {
+      setVoteMsg("Failed to submit vote");
     } finally {
       setSubmitting(null);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground px-6 py-8">
+    <div className="min-h-screen bg-background text-foreground px-6 py-8 max-w-4xl mx-auto">
       <h1 className="text-foreground text-2xl font-semibold mb-6">Cast Your Vote</h1>
-      
+
       {campaignLoading ? (
         <>
           <div className="h-6 bg-muted animate-pulse rounded mb-2"></div>
@@ -402,17 +420,21 @@ export default function PollDetailPage() {
       ) : (
         <>
           {campaign?.club && (
-            <div className="text-sm text-muted-foreground font-medium">{campaign.club}</div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
+              <span>{campaign.club}</span>
+              {campaign?.ends_at && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-medium bg-red-500/15 text-red-400 border-red-500/30">
+                  {formatTimeRemaining(campaign.ends_at) ?? 'Ending soon'}
+                </span>
+              )}
+            </div>
           )}
           <h1 className="text-foreground text-lg font-semibold mt-2">
             {campaign?.title || `Poll`}
           </h1>
           {campaign?.description && (
-            <div className="text-muted-foreground text-xs mt-1">{campaign.description}</div>
+            <div className="text-muted-foreground text-xs mt-1 mb-4">{campaign.description}</div>
           )}
-          <div className="text-muted-foreground text-xs mb-6 mt-1">
-            {formatDateRange(campaign?.starts_at, campaign?.ends_at)}
-          </div>
         </>
       )}
 
@@ -503,11 +525,15 @@ export default function PollDetailPage() {
                 disabled={submitting !== null}
                 className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? "Submitting..." : campaign?.vote_type === "preferential" ? "Submit Preferences" : "Submit Vote"}
+                {submitting
+                  ? "Submitting..."
+                  : campaign?.vote_type === "preferential"
+                  ? "Submit Preferences"
+                  : "Submit Vote"}
               </button>
             ) : null}
 
-            <button 
+            <button
               className="rounded-md bg-secondary text-secondary-foreground px-4 py-2 text-sm"
               onClick={() => router.push("/polling-menu")}
             >
@@ -516,6 +542,7 @@ export default function PollDetailPage() {
           </div>
         </div>
       ) : (
+        // Admin view
         <div className="rounded-xl border border-border bg-card p-6">
           <p className="text-sm text-muted-foreground mb-4">Admin view: current votes (placeholder)</p>
           <div className="text-sm">
@@ -536,21 +563,4 @@ export default function PollDetailPage() {
     </div>
   );
 }
-
-function formatDateRange(starts?: string | null, ends?: string | null) {
-  const fmt = (iso?: string | null) => {
-    if (!iso) return null;
-    const d = new Date(iso);
-    const date = d.toLocaleDateString("en-GB");
-    const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-    return `${date} ${time}`;
-  };
-  const a = fmt(starts);
-  const b = fmt(ends);
-  if (a && b) return `Starts: ${a} • Ends: ${b}`;
-  if (a) return `Starts: ${a}`;
-  if (b) return `Ends: ${b}`;
-  return "";
-}
-
 

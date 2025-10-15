@@ -295,7 +295,7 @@ export default function PollResultsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background text-foreground px-6 py-8">
+      <div className="min-h-screen bg-background text-foreground px-6 py-8 max-w-4xl mx-auto">
         {/* Header skeleton */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -338,7 +338,7 @@ export default function PollResultsPage() {
 
   if (role !== "admin") {
     return (
-      <div className="min-h-screen bg-background text-foreground px-6 py-8">
+      <div className="min-h-screen bg-background text-foreground px-6 py-8 max-w-4xl mx-auto">
         <p className="text-sm text-muted-foreground">Only admins can view results.</p>
         <button className="mt-4 rounded-md bg-secondary text-secondary-foreground px-3 py-1 text-xs" onClick={() => router.push(`/poll/${id}`)}>
           Back
@@ -350,7 +350,7 @@ export default function PollResultsPage() {
   const total = rows.reduce((a, r) => a + r.count, 0) || 1;
 
   return (
-    <div className="min-h-screen bg-background text-foreground px-6 py-8">
+    <div className="min-h-screen bg-background text-foreground px-6 py-8 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-semibold">Live Results</h1>
@@ -380,7 +380,7 @@ export default function PollResultsPage() {
         </button>
       </div>
       {lastUpdated && (
-        <p className="text-xs text-muted-foreground mb-4">
+        <p className="text-xs text-muted-foreground mb-6">
           Last updated: {lastUpdated.toLocaleTimeString()}
         </p>
       )}

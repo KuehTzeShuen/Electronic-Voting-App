@@ -1,13 +1,10 @@
 "use client";
 import { useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import React from "react";
-
-// colorPalette no longer used
 
 type Campaign = {
   id: string;
@@ -33,145 +30,37 @@ export default function OngoingPollsPage() {
       return null;
     }
   })();
-  const [role, setRole] = useState<"student" | "admin" | null>(initialRole);
-  const [roleLoading, setRoleLoading] = useState<boolean>(true);
-  const [campaignsLoading, setCampaignsLoading] = useState<boolean>(true);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [profile, setProfile] = useState<{ 
-    email: string | null; 
-    first_name: string | null; 
-    last_name: string | null; 
-    student_id: string | null; 
-    gender: string | null;
-    ug_pg: string | null;
-    dob: string | null;
-    discipline: number | null;
-    location: number | null;
-    grade: string | null;
-    role: string | null 
-  } | null>(null);
-  // Admin add form moved to /polls/new; local inputs removed
 
-  // const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-  // const [cardStyle, setCardStyle] = useState<React.CSSProperties>({});
+  const [role] = useState<"student" | "admin" | null>(initialRole);
+  const [roleLoading, setRoleLoading] = useState(true);
+  const [campaignsLoading, setCampaignsLoading] = useState(true);
   const router = useRouter();
 
-  // Animation end handler
-  // const handleAnimationEnd = () => {
-  //   if (selectedIdx !== null) {
-  //     router.push(`/poll/${selectedIdx}`);
-  //   }
-  // };
-
-  // When Confirm is clicked
-  // const handleSelect = (idx: number) => {
-  //   const card = cardRefs.current[idx];
-  //   if (card) {
-  //     const rect = card.getBoundingClientRect();
-  //     const scrollY = window.scrollY || window.pageYOffset;
-  //     const scrollX = window.scrollX || window.pageXOffset;
-  //     // Calculate the card's center
-  //     const cardCenterX = rect.left + rect.width / 2 + scrollX;
-  //     const cardCenterY = rect.top + rect.height / 2 + scrollY;
-  //     // Calculate the viewport center
-  //     const viewportCenterX = window.innerWidth / 2;
-  //     const viewportCenterY = window.innerHeight / 2;
-  //     // Calculate translation needed
-  //     const translateX = viewportCenterX - cardCenterX;
-  //     const translateY = viewportCenterY - cardCenterY;
-  //     setCardStyle({
-  //       position: "absolute",
-  //       left: rect.left + scrollX,
-  //       top: rect.top + scrollY,
-  //       width: rect.width,
-  //       height: rect.height,
-  //       zIndex: 50,
-  //       transition: "transform 0.7s cubic-bezier(0.4,0,0.2,1), opacity 0.7s",
-  //       transform: `translate(0px, 0px) scale(1)`,
-  //     });
-  //     setSelectedIdx(idx);
-  //     // Animate to center after a tick
-  //     setTimeout(() => {
-  //       // Calculate scale factors
-  //       const targetWidth = window.innerWidth * 0.9;
-  //       const targetHeight = window.innerHeight * 0.8;
-  //       const scaleX = targetWidth / rect.width;
-  //       const scaleY = targetHeight / rect.height;
-  //       setCardStyle((prev: React.CSSProperties) => ({
-  //         ...prev,
-  //         transform: `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`,
-  //         boxShadow: "0 10px 40px 0 rgba(0,0,0,0.3)",
-  //       }));
-  //     }, 10);
-  //   }
-  // };
-
-  // Hydrate role once; show skeleton until resolved
-  React.useEffect(() => {
-    (async () => {
-      try {
-        // Check authentication using localStorage (same as login page)
-        let email: string | null = null;
-        let storedRole: string | null = null;
-        
-        try {
-          email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
-          storedRole = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
-        } catch {
-          // localStorage not available
-        }
-        
-        if (!email || !storedRole) {
-          // No authentication data, redirect to login
-          router.push("/");
-          return;
-        }
-        
-        // Verify the user exists in the database
-        const { data, error: fetchError } = await supabase
-          .from("users")
-          .select("role")
-          .eq("email", email)
-          .eq("role", storedRole)
-          .maybeSingle();
-          
-        if (fetchError || !data) {
-          // User not found or error, redirect to login
-          router.push("/");
-          return;
-        }
-        
-        // Set the role from localStorage (which was validated against DB)
-        setRole(storedRole as "student" | "admin");
-      } finally {
-        setRoleLoading(false);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Track code input keyed by campaign id
-  const handleCodeChange = (id: string, value: string) => {
-    setCodes(prev => ({ ...prev, [id]: value }));
-  };
-
-  // Join with code (basic client-side check then navigate)
-  const handleJoin = async (id: string) => {
-    const code = (codes[id] || "").trim();
-    if (!code) return; // require a non-empty code
-    // Check code against campaigns
-    const { data } = await supabase
-      .from("campaigns")
-      .select("id")
-      .eq("id", id)
-      .eq("code", code)
-      .maybeSingle();
-    if (!data) {
-      alert("Invalid access code for this poll");
-      return;
+  const formatTimeRemaining = (iso?: string | null): string | null => {
+    if (!iso) return null;
+    const endMs = new Date(iso).getTime();
+    const nowMs = Date.now();
+    const diffMs = endMs - nowMs;
+    if (isNaN(endMs)) return null;
+    if (diffMs <= 0) return "Ended";
+    const totalMinutes = Math.floor(diffMs / 60000);
+    const totalHours = Math.floor(totalMinutes / 60);
+    const totalDays = Math.floor(totalHours / 24);
+    if (totalDays >= 1) {
+      const days = totalDays + (totalHours % 24 > 0 || totalMinutes % 60 > 0 ? 1 : 0); // round up partial days
+      return `Ending in ${days} day${days !== 1 ? 's' : ''}`;
     }
-    router.push(`/poll/${id}`);
+    if (totalHours >= 1) {
+      return `Ending in ${totalHours} hour${totalHours !== 1 ? 's' : ''}`;
+    }
+    const mins = Math.max(1, totalMinutes); // show at least 1 minute
+    return `Ending in ${mins} minute${mins !== 1 ? 's' : ''}`;
   };
+
+  // Set role loading to false after role is determined
+  React.useEffect(() => {
+    setRoleLoading(false);
+  }, []);
 
   // Load campaigns without caching
   React.useEffect(() => {
@@ -189,14 +78,12 @@ export default function OngoingPollsPage() {
           const allCampaigns = data as Campaign[];
           setCampaigns(allCampaigns);
           
-          // Separate ongoing and completed polls
+          // Filter for ongoing polls
           const now = new Date().toISOString();
           const ongoing = allCampaigns.filter(c => 
+            c.starts_at && new Date(c.starts_at).toISOString() <= now &&
             c.ends_at && new Date(c.ends_at).toISOString() > now
           );
-          // const completed = allCampaigns.filter(c => 
-          //   c.ends_at && new Date(c.ends_at).toISOString() <= now
-          // );
           
           setOngoingCampaigns(ongoing);
         }
@@ -205,82 +92,6 @@ export default function OngoingPollsPage() {
       }
     })();
   }, []);
-
-  async function toggleProfile() {
-    const nextOpen = !profileOpen;
-    setProfileOpen(nextOpen);
-    if (nextOpen && !profile) {
-      let userRow: { 
-        email: string | null; 
-        first_name: string | null; 
-        last_name: string | null; 
-        student_id: string | null; 
-        gender: string | null;
-        ug_pg: string | null;
-        dob: string | null;
-        discipline: number | null;
-        location: number | null;
-        grade: string | null;
-        role: string | null 
-      } | null = null;
-      
-      // First try to get user from Supabase auth
-      try {
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (!authError && user?.id) {
-          const { data } = await supabase
-            .from("users")
-            .select("email, first_name, last_name, student_id, gender, ug_pg, dob, discipline, location, grade, role")
-            .eq("auth_id", user.id)
-            .limit(1)
-            .maybeSingle();
-          if (data) userRow = data;
-        }
-      } catch {}
-      
-      // Fallback to localStorage email if auth user not found
-      if (!userRow) {
-        let email: string | null = null;
-        try {
-          email = typeof window !== "undefined" ? localStorage.getItem("appEmail") : null;
-        } catch {
-          // localStorage not available
-        }
-        if (email) {
-          const { data } = await supabase
-            .from("users")
-            .select("email, first_name, last_name, student_id, gender, ug_pg, dob, discipline, location, grade, role")
-            .eq("email", email)
-            .limit(1)
-            .maybeSingle();
-          if (data) userRow = data;
-        }
-      }
-      
-      // Role should reflect the user's chosen session role only (not DB),
-      // so prefer localStorage appRole, falling back to current in-memory role.
-      let resolvedRole: string | null = null;
-      try {
-        const stored = typeof window !== "undefined" ? localStorage.getItem("appRole") : null;
-        if (stored === "admin" || stored === "student") resolvedRole = stored;
-      } catch {}
-      if (!resolvedRole) resolvedRole = role;
-      
-      setProfile({
-        email: userRow?.email ?? null,
-        first_name: userRow?.first_name ?? null,
-        last_name: userRow?.last_name ?? null,
-        student_id: userRow?.student_id ?? null,
-        gender: userRow?.gender ?? null,
-        ug_pg: userRow?.ug_pg ?? null,
-        dob: userRow?.dob ?? null,
-        discipline: userRow?.discipline ?? null,
-        location: userRow?.location ?? null,
-        grade: userRow?.grade ?? null,
-        role: resolvedRole,
-      });
-    }
-  }
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -308,56 +119,8 @@ export default function OngoingPollsPage() {
       </div>
 
       <header className="w-full px-6 pt-8 pb-4 flex items-center justify-between relative z-10">
-        <h1 className="text-foreground text-2xl font-semibold">Ongoing Polls</h1>
-        <div className="flex items-center gap-2">
-          {!roleLoading && role === "admin" && (
-            <Button size="sm" onClick={() => router.push("/polls/new")}>Add poll</Button>
-          )}
-          <Button 
-            size="sm" 
-            variant="secondary" 
-            onClick={() => router.push("/polling-menu/completed")}
-          >
-            View Completed
-          </Button>
-          <Button size="sm" variant="secondary" onClick={toggleProfile}>Profile</Button>
-        </div>
+        <h1 className="text-foreground text-2xl font-semibold">Polls</h1>
       </header>
-
-      {profileOpen && (
-        <>
-          <div className="fixed inset-0 z-[999] bg-black/40" onClick={toggleProfile} />
-          <div className="fixed right-6 top-20 z-[1000] w-64 rounded-md border border-border bg-card p-3 shadow-lg">
-            <div className="text-sm font-medium text-foreground mb-2">Profile</div>
-            <div className="text-xs text-muted-foreground space-y-1 max-h-80 overflow-y-auto">
-              <div><span className="font-medium text-foreground">Email:</span> {profile?.email ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Name:</span> {(profile?.first_name ?? "-") + " " + (profile?.last_name ?? "")}</div>
-              <div><span className="font-medium text-foreground">Student ID:</span> {profile?.student_id ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Gender:</span> {profile?.gender ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Level:</span> {profile?.ug_pg ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Date of Birth:</span> {profile?.dob ? new Date(profile.dob).toLocaleDateString() : "-"}</div>
-              <div><span className="font-medium text-foreground">Discipline:</span> {profile?.discipline ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Location:</span> {profile?.location ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Grade:</span> {profile?.grade ?? "-"}</div>
-              <div><span className="font-medium text-foreground">Role:</span> {profile?.role ?? "-"}</div>
-            </div>
-            <div className="mt-3 flex justify-end gap-2">
-              <Button size="sm" variant="secondary" onClick={toggleProfile}>Close</Button>
-              <Button size="sm" variant="destructive" onClick={() => {
-                try {
-                  localStorage.removeItem("appEmail");
-                  localStorage.removeItem("appRole");
-                } catch {
-                  // localStorage not available
-                }
-                router.push("/");
-              }}>Logout</Button>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Admin add form moved to /polls/new */}
 
       <main className="w-full px-4 pt-6 pb-10 space-y-6 relative z-10">
         {(roleLoading || campaignsLoading) && (
@@ -373,17 +136,37 @@ export default function OngoingPollsPage() {
             {ongoingCampaigns.length > 0 ? (
               <div className="space-y-4">
                 {ongoingCampaigns.map((c) => (
-                  <Card key={c.id} className="w-full border-muted/40 bg-card/60 backdrop-blur">
-                    <CardHeader className="pb-0"></CardHeader>
-                    <CardContent>
-                      {c.club && <div className="text-sm text-muted-foreground font-medium">{c.club}</div>}
-                      <div className="text-foreground text-lg font-semibold mt-1">{c.title}</div>
-                      {c.description && <div className="text-muted-foreground text-xs mt-1">{c.description}</div>}
-                      {c.ends_at && (
-                        <div className="text-xs text-muted-foreground mt-2">
-                          Ends: {new Date(c.ends_at).toLocaleDateString()} at {new Date(c.ends_at).toLocaleTimeString()}
+                  <div
+                    key={c.id}
+                    className="relative group rounded-xl border border-border bg-background/50 p-4 overflow-hidden"
+                    onMouseMove={(e) => {
+                      const el = e.currentTarget as HTMLDivElement;
+                      const rect = el.getBoundingClientRect();
+                      const x = e.clientX - rect.left;
+                      const y = e.clientY - rect.top;
+                      el.style.setProperty('--x', `${x}px`);
+                      el.style.setProperty('--y', `${y}px`);
+                      const base = Math.min(rect.width, rect.height);
+                      const r = Math.max(260, Math.min(560, base * 0.8));
+                      el.style.setProperty('--r', `${r}px`);
+                    }}
+                  >
+                    {/* Role-aware style glow (dynamic circular, more subtle) */}
+                    <div className="pointer-events-none absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-[radial-gradient(var(--r)_var(--r)_at_var(--x)_var(--y),rgba(99,102,241,0.08)_0%,rgba(99,102,241,0.04)_40%,transparent_85%)]" />
+                    <div className="relative z-10">
+                      {c.club && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
+                          <span>{c.club}</span>
+                          {c.ends_at && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-medium bg-red-500/15 text-red-400 border-red-500/30">
+                              {formatTimeRemaining(c.ends_at) ?? 'Ending soon'}
+                            </span>
+                          )}
                         </div>
                       )}
+                      <div className="text-foreground text-xl font-semibold mt-1 tracking-tight">{c.title}</div>
+                      {c.description && <div className="text-muted-foreground text-xs mt-2">{c.description}</div>}
+                      {c.ends_at && null}
                       {role === "student" ? (
                         <div className="flex items-center gap-2 mt-4">
                           <Input
@@ -392,19 +175,22 @@ export default function OngoingPollsPage() {
                             value={codes[c.id] || ""}
                             onChange={e => handleCodeChange(c.id, e.target.value)}
                           />
-                          <Button size="sm" onClick={() => handleJoin(c.id)} disabled={(codes[c.id] || "").trim() === ""}>
+                          <Button size="sm" className="shadow-[0_0_18px_rgba(99,102,241,0.25)]" onClick={() => handleJoin(c.id)} disabled={(codes[c.id] || "").trim() === ""}>
                             Join
                           </Button>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 mt-4">
-                          <Button size="sm" variant="secondary" onClick={() => router.push(`/poll/${c.id}/results`)}>
-                            View votes
+                          <Button size="sm" variant="secondary" className="hover:bg-white/10" onClick={() => router.push(`/poll/${c.id}/results`)}>
+                            View Results
+                          </Button>
+                          <Button size="sm" variant="secondary" className="hover:bg-white/10" onClick={() => router.push(`/poll/${c.id}/summary`)}>
+                            View Summary
                           </Button>
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -417,4 +203,59 @@ export default function OngoingPollsPage() {
       </main>
     </div>
   );
+
+  function handleCodeChange(campaignId: string, value: string) {
+    setCodes(prev => ({ ...prev, [campaignId]: value }));
+  }
+
+  async function handleJoin(campaignId: string) {
+    const code = codes[campaignId];
+    if (!code || code.trim().length === 0) return;
+    
+    try {
+      console.log('Attempting to join campaign:', campaignId, 'with code:', code.trim());
+      
+      const { data, error } = await supabase
+        .from("campaigns")
+        .select("code")
+        .eq("id", campaignId)
+        .single();
+      
+      console.log('Database response:', { data, error });
+      
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
+      
+      if (!data) {
+        console.error('No data returned from database');
+        alert("Campaign not found");
+        return;
+      }
+      
+      console.log('Expected code:', data.code, 'Entered code:', code.trim());
+      console.log('Expected code type:', typeof data.code, 'Entered code type:', typeof code.trim());
+      console.log('Expected code length:', data.code?.length, 'Entered code length:', code.trim().length);
+      console.log('Expected code JSON:', JSON.stringify(data.code), 'Entered code JSON:', JSON.stringify(code.trim()));
+      
+      // Normalize both codes for comparison
+      const expectedCode = String(data.code || '').trim();
+      const enteredCode = String(code || '').trim();
+      
+      console.log('Normalized expected:', expectedCode, 'Normalized entered:', enteredCode);
+      console.log('Codes match:', expectedCode === enteredCode);
+      
+      if (expectedCode === enteredCode) {
+        console.log('Code matches, redirecting to poll');
+        router.push(`/poll/${campaignId}`);
+      } else {
+        console.log('Code does not match');
+        alert("Invalid access code");
+      }
+    } catch (error) {
+      console.error("Error joining campaign:", error);
+      alert("Failed to join campaign: " + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  }
 }

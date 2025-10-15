@@ -132,11 +132,18 @@ export default function Navbar() {
     })();
   }, [email, role]);
 
-  const links = [
+  const baseLinks = [
     { name: "Polls", href: "/polling-menu" },
     { name: "Completed Polls", href: "/polling-menu/completed" },
-    { name: "Help", href: "/help" },
   ];
+  const links =
+    role === "admin"
+      ? [
+          ...baseLinks,
+          { name: "Add Poll", href: "/polls/new" },
+          { name: "Help", href: "/help" },
+        ]
+      : [...baseLinks, { name: "Help", href: "/help" }];
 
   return (
     <nav className="flex items-center justify-between px-6 py-3 border-b bg-background/80 backdrop-blur-md">
@@ -162,20 +169,7 @@ export default function Navbar() {
               </NavigationMenuLink>
             </NavigationMenuItem>
           ))}
-          {role === "admin" && (
-            <NavigationMenuItem>
-              <NavigationMenuLink
-                asChild
-                className={`px-3 py-2 rounded-md transition ${
-                  pathname === "/polls/new"
-                    ? "text-primary font-semibold"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Link href="/polls/new">Add Poll</Link>
-              </NavigationMenuLink>
-            </NavigationMenuItem>
-          )}
+          {/* Admin-specific "Add Poll" is now included in links ordering when role === "admin" */}
           {/* Always render About last */}
           <NavigationMenuItem>
             <NavigationMenuLink

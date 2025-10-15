@@ -41,11 +41,29 @@ export default function SignupPage() {
     setError(null);
     setLoading(true);
     try {
+      // Let native form validation handle invalid email and show the browser popup
+      const emailInput = document.getElementById("email") as HTMLInputElement | null;
+      if (emailInput) {
+        // Ensure domain restriction surfaces as a native popup
+        const value = emailInput.value.trim();
+        const isMonash = /@student\.monash\.edu$/i.test(value);
+        if (!isMonash) {
+          emailInput.setCustomValidity("Email must be a @student.monash.edu address");
+        }
+      }
+      if (emailInput && !emailInput.checkValidity()) {
+        emailInput.reportValidity();
+        setLoading(false);
+        return;
+      }
+
+      const emailLower = email.trim().toLowerCase();
+
       // If an account already exists for this email, prompt to login instead
       const { data: existing, error: existingErr } = await supabase
         .from("users")
         .select("student_id")
-        .eq("email", email)
+        .eq("email", emailLower)
         .eq("role", role)
         .limit(1)
         .maybeSingle();
@@ -56,7 +74,7 @@ export default function SignupPage() {
       }
 
       const { error: signInError } = await supabase.auth.signInWithOtp({
-        email,
+        email: emailLower,
         options: { shouldCreateUser: true },
       });
       if (signInError) throw signInError;
@@ -171,7 +189,18 @@ export default function SignupPage() {
             <form onSubmit={sendOtp} className="flex flex-col gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@university.edu" required />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onInput={e => (e.currentTarget as HTMLInputElement).setCustomValidity("")}
+                  onInvalid={e => (e.currentTarget as HTMLInputElement).setCustomValidity("Email must be a @student.monash.edu address")}
+                  placeholder="you@student.monash.edu"
+                  pattern="^[A-Za-z0-9._%+-]+@student\.monash\.edu$"
+                  title="Email must be a @student.monash.edu address"
+                  required
+                />
               </div>
               <div className="grid gap-2">
                 <Label>Role</Label>
